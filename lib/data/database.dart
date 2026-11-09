@@ -248,24 +248,28 @@ class AppDatabase extends _$AppDatabase {
   // ---------- Live queries for the UI ----------
 
   /// Rings ordered by period then name, each with its member count.
-  Stream<List<RingSummary>> watchRingSummaries() {
-    final count = members.id.count();
-    final query =
-        select(rings)
-            .join([leftOuterJoin(members, members.ringId.equalsExp(rings.id))])
-          ..addColumns([count])
-          ..groupBy([rings.id])
-          ..orderBy([
-            OrderingTerm(expression: rings.periodDays),
-            OrderingTerm(expression: rings.name),
-          ]);
-    return query.watch().map(
-      (rows) => [
-        for (final row in rows)
-          RingSummary(_ring(row.readTable(rings)), row.read(count) ?? 0),
-      ],
-    );
-  }
+  Stream<List<RingSummary>> watchRingSummaries() =>
+      _ringSummaryQuery().watch().map(_toSummaries);
+
+  Future<List<RingSummary>> ringSummaries() async =>
+      _toSummaries(await _ringSummaryQuery().get());
+
+  late final _memberCount = members.id.count();
+
+  JoinedSelectStatement<HasResultSet, dynamic> _ringSummaryQuery() =>
+      select(rings)
+          .join([leftOuterJoin(members, members.ringId.equalsExp(rings.id))])
+        ..addColumns([_memberCount])
+        ..groupBy([rings.id])
+        ..orderBy([
+          OrderingTerm(expression: rings.periodDays),
+          OrderingTerm(expression: rings.name),
+        ]);
+
+  List<RingSummary> _toSummaries(List<TypedResult> rows) => [
+    for (final row in rows)
+      RingSummary(_ring(row.readTable(rings)), row.read(_memberCount) ?? 0),
+  ];
 
   Stream<Ring?> watchRing(int ringId) =>
       (select(rings)..where((r) => r.id.equals(ringId)))

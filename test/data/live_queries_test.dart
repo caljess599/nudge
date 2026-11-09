@@ -37,7 +37,7 @@ void main() {
       random: Random(1),
     );
 
-    final summaries = await db.watchRingSummaries().first;
+    final summaries = await db.ringSummaries();
     expect(summaries.map((s) => '${s.ring.name}:${s.memberCount}'), [
       'Weekly:1',
       'Monthly:2',
