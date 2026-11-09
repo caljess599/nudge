@@ -20,6 +20,28 @@ val keystoreProperties = Properties().apply {
 }
 val hasReleaseKey = keystorePropertiesFile.exists()
 
+// Fail early with a clear message instead of "getProperty(...) must not
+// be null" when key.properties is incomplete, misspelled or not plain text.
+// Only the expected names are reported, never anything else in the file,
+// so a stray password can't end up in the build log.
+val signingNames = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+
+fun signingProperty(name: String): String {
+    val value = keystoreProperties.getProperty(name)
+    if (value.isNullOrBlank()) {
+        val present = signingNames.filter {
+            !keystoreProperties.getProperty(it).isNullOrBlank()
+        }
+        throw GradleException(
+            "android/key.properties has no '$name'. It must be a plain-text " +
+                "file with these lines: ${signingNames.joinToString { "$it=..." }} " +
+                "(see docs/RELEASING.md). Found: " +
+                present.joinToString().ifEmpty { "none of them" } + "."
+        )
+    }
+    return value
+}
+
 android {
     namespace = "com.caljess.nudge"
     compileSdk = flutter.compileSdkVersion
@@ -51,10 +73,18 @@ android {
     signingConfigs {
         if (hasReleaseKey) {
             create("release") {
-                keyAlias = keystoreProperties.getProperty("keyAlias")
-                keyPassword = keystoreProperties.getProperty("keyPassword")
-                storeFile = file(keystoreProperties.getProperty("storeFile"))
-                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = signingProperty("keyAlias")
+                keyPassword = signingProperty("keyPassword")
+                storePassword = signingProperty("storePassword")
+                storeFile = file(signingProperty("storeFile")).also {
+                    if (!it.exists()) {
+                        throw GradleException(
+                            "Keystore not found at '$it' (storeFile in " +
+                                "android/key.properties). Use the full path, " +
+                                "e.g. /Users/you/nudge-upload.jks."
+                        )
+                    }
+                }
             }
         }
     }
