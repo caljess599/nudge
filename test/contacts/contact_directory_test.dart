@@ -167,6 +167,52 @@ void main() {
     expect(saved.reachValue, isNull);
   });
 
+  group('name fallback (e.g. Auto Backup restored on a new phone)', () {
+    test('members with unknown keys are linked by unique name', () async {
+      final a = await add('old-phone-ana', 'Ana');
+      final b = await add('old-phone-ben', 'Ben');
+      await db.setNickname(a.id, 'Annie');
+      await directory.refresh();
+
+      final ana = (await db.memberById(a.id))!;
+      final benM = (await db.memberById(b.id))!;
+      expect(ana.contactKey, 'k-ana');
+      expect(ana.nickname, 'Annie');
+      expect(benM.contactKey, 'k-ben');
+      expect(directory.stateOf(ana), LinkState.linked);
+      expect(directory.stateOf(benM), LinkState.linked);
+    });
+
+    test('ambiguous names still need relinking', () async {
+      source.contacts.add(
+        const PhoneContact(key: 'k-ana-2', id: '9', displayName: 'Ana'),
+      );
+      final m = await add('old-ana', 'Ana');
+      await directory.refresh();
+      final kept = (await db.memberById(m.id))!;
+      expect(kept.contactKey, 'old-ana');
+      expect(directory.stateOf(kept), LinkState.needsRelinking);
+    });
+
+    test('a contact already linked to someone else is not reused', () async {
+      await add('k-ana', 'Ana');
+      final other = await add('old-ana', 'Ana');
+      await directory.refresh();
+      final kept = (await db.memberById(other.id))!;
+      expect(kept.contactKey, 'old-ana');
+      expect(directory.stateOf(kept), LinkState.needsRelinking);
+    });
+
+    test('not used with limited access', () async {
+      source.access = ContactsAccess.limited;
+      final m = await add('old-ana', 'Ana');
+      await directory.refresh();
+      final kept = (await db.memberById(m.id))!;
+      expect(kept.contactKey, 'old-ana');
+      expect(directory.stateOf(kept), LinkState.notShared);
+    });
+  });
+
   test('dialableNumber keeps + and digits', () {
     expect(dialableNumber('+1 (202) 555-0101'), '+12025550101');
     expect(dialableNumber(' 202.555.0101 '), '2025550101');

@@ -141,7 +141,7 @@ void main() {
     );
 
     test('key first, then a unique name', () {
-      final result = matchImportedContacts(
+      final result = matchMembersToContacts(
         [m(1, 'same-key', 'Ana'), m(2, 'old-phone-key', 'Ben  Okoro ')],
         [
           (key: 'same-key', name: 'Ana Renamed'),
@@ -152,7 +152,7 @@ void main() {
     });
 
     test('ambiguous or missing names stay unmatched', () {
-      final result = matchImportedContacts(
+      final result = matchMembersToContacts(
         [m(1, 'old-1', 'Sam'), m(2, 'old-2', 'Nobody')],
         [(key: 'a', name: 'Sam'), (key: 'b', name: 'Sam')],
       );
@@ -160,7 +160,7 @@ void main() {
     });
 
     test('a contact is never given to two members', () {
-      final result = matchImportedContacts(
+      final result = matchMembersToContacts(
         [m(1, 'k-ana', 'Ana'), m(2, 'old', 'Ana'), m(3, 'old2', 'Cy')],
         [(key: 'k-ana', name: 'Ana'), (key: 'k-cy', name: 'Cy')],
       );

@@ -3,17 +3,19 @@ import 'models.dart';
 /// A contact in the phone's address book, reduced to what matching needs.
 typedef ContactRef = ({String key, String name});
 
-/// Matches imported members to the phone's contacts, as SPEC.md requires:
-/// by `contact_key` first, falling back to name.
+/// Matches members to the phone's contacts, as SPEC.md requires for
+/// import: by `contact_key` first, falling back to name. Also used when
+/// reconciling with the address book, e.g. after Android Auto Backup
+/// restores the database on a new phone.
 ///
 /// Contact keys differ between phones (and can change after a reinstall),
-/// so restoring a backup on a new phone mostly relies on the name match.
+/// so restoring on a new phone mostly relies on the name match.
 /// A name only counts if exactly one contact has it and no other member
 /// already claimed that contact. Members that can't be matched keep their
 /// key and will show "Needs relinking".
 ///
 /// Returns the members with updated keys where a name match was found.
-List<Member> matchImportedContacts(
+List<Member> matchMembersToContacts(
   List<Member> members,
   List<ContactRef> contacts,
 ) {

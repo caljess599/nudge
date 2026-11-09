@@ -52,7 +52,7 @@ class Backup {
     if (access.canRead) {
       final phone = await contacts.source.loadAll();
       restored = data.copyWith(
-        members: matchImportedContacts(data.members, [
+        members: matchMembersToContacts(data.members, [
           for (final c in phone) (key: c.key, name: c.displayName),
         ]),
       );
