@@ -8,8 +8,11 @@ import '../core/actions.dart';
 import '../core/calendar_date.dart';
 import '../core/due_dates.dart';
 import '../core/models.dart';
+import '../contacts/contact_directory.dart';
 import '../debug/seed.dart';
+import 'contact_picker_screen.dart';
 import 'formatting.dart';
+import 'reach_out.dart';
 import 'ring_form_dialog.dart';
 
 class RingDetailScreen extends StatefulWidget {
@@ -57,15 +60,19 @@ class _RingDetailScreenState extends State<RingDetailScreen> {
                 tooltip: 'Delete ring',
                 onPressed: () => _deleteRing(context, ring),
               ),
+              if (kDebugMode)
+                IconButton(
+                  icon: const Icon(Icons.bug_report_outlined),
+                  tooltip: 'Debug: add 3 due fake people',
+                  onPressed: () => _addFakePeople(context, ring),
+                ),
             ],
           ),
-          floatingActionButton: kDebugMode
-              ? FloatingActionButton.extended(
-                  icon: const Icon(Icons.bug_report_outlined),
-                  label: const Text('Add fake people'),
-                  onPressed: () => _addFakePeople(context, ring),
-                )
-              : null,
+          floatingActionButton: FloatingActionButton.extended(
+            icon: const Icon(Icons.person_add_alt),
+            label: const Text('Add people'),
+            onPressed: () => _addPeople(context, ring),
+          ),
           body: StreamBuilder<List<Member>>(
             stream: _members,
             builder: (context, snapshot) {
@@ -148,6 +155,18 @@ class _RingDetailScreenState extends State<RingDetailScreen> {
     await db.deleteRingMovingMembers(ring.id, toRingId: target.id);
   }
 
+  Future<void> _addPeople(BuildContext context, Ring ring) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final added = await Navigator.of(context).push<int>(
+      MaterialPageRoute(builder: (_) => ContactPickerScreen(ring: ring)),
+    );
+    if (added != null && added > 0) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Added ${peopleCount(added)} to ${ring.name}')),
+      );
+    }
+  }
+
   Future<void> _addFakePeople(BuildContext context, Ring ring) async {
     final scope = AppScope.of(context);
     await addFakeMembers(
@@ -225,13 +244,22 @@ class _MemberList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final today = AppScope.of(context).clock.today();
+    final scope = AppScope.of(context);
+    return ListenableBuilder(
+      listenable: scope.contacts,
+      builder: (context, _) => _build(context, scope),
+    );
+  }
+
+  Widget _build(BuildContext context, AppScope scope) {
+    final today = scope.clock.today();
     if (members.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Text(
-            'No one in this ring yet.\n${periodLabel(ring.periodDays)}',
+            'No one in this ring yet.\n${periodLabel(ring.periodDays)}\n\n'
+            'Tap "Add people" to choose from your contacts.',
             textAlign: TextAlign.center,
           ),
         ),
@@ -260,6 +288,9 @@ class _MemberList extends StatelessWidget {
               '${dueLabel(context, m, ring, today)} · '
               '${lastContactLabel(context, m)}',
             ),
+            trailing: scope.contacts.stateOf(m) == LinkState.needsRelinking
+                ? const _NeedsRelinkingChip()
+                : null,
             onTap: () => _showMemberSheet(context, m, ring, today),
           ),
       ],
@@ -273,10 +304,15 @@ Future<void> _showMemberSheet(
   Ring ring,
   CalendarDate today,
 ) {
-  final db = AppScope.of(context).db;
+  final scope = AppScope.of(context);
+  final db = scope.db;
+  final contact = scope.contacts.contactFor(member);
+  final needsRelinking =
+      scope.contacts.stateOf(member) == LinkState.needsRelinking;
   return showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
+    isScrollControlled: true,
     builder: (sheetContext) => SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -290,7 +326,31 @@ Future<void> _showMemberSheet(
               '${dueLabel(sheetContext, member, ring, today)} · '
               '${lastContactLabel(sheetContext, member)}',
             ),
+            trailing: contact == null
+                ? null
+                : ReachOutButtons(contact: contact),
           ),
+          if (needsRelinking)
+            ListTile(
+              leading: Icon(
+                Icons.link_off,
+                color: Theme.of(sheetContext).colorScheme.error,
+              ),
+              title: const Text('Relink to a contact'),
+              subtitle: const Text(
+                'This contact was deleted or merged on your phone. '
+                'Pick the contact it should use now.',
+              ),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                Navigator.of(context).push(
+                  MaterialPageRoute<int>(
+                    builder: (_) =>
+                        ContactPickerScreen(ring: ring, relinking: member),
+                  ),
+                );
+              },
+            ),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.check),
@@ -331,6 +391,30 @@ Future<void> _showMemberSheet(
       ),
     ),
   );
+}
+
+class _NeedsRelinkingChip extends StatelessWidget {
+  const _NeedsRelinkingChip();
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.error;
+    return Tooltip(
+      message: 'Contact not found. Tap to relink.',
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.link_off, size: 18, color: color),
+          const SizedBox(width: 4),
+          Text(
+            'Needs relinking',
+            style: Theme.of(context).textTheme.labelSmall
+                ?.copyWith(color: color),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 Future<Ring?> _pickRing(BuildContext context, {required Ring exclude}) async {

@@ -8,6 +8,7 @@ import '../core/calendar_date.dart';
 import '../core/models.dart';
 import '../data/database.dart';
 import 'formatting.dart';
+import 'reach_out.dart';
 
 /// How many days of past nudges to show so people can check them off late.
 const recentDays = 7;
@@ -21,6 +22,10 @@ class TodayScreen extends StatefulWidget {
 
 class _TodayScreenState extends State<TodayScreen> with WidgetsBindingObserver {
   CalendarDate? _today;
+
+  /// Set when Call/Text/contact card opened another app for this nudge,
+  /// so we can ask "Did you reach out?" when the user comes back.
+  NudgeEntry? _awaitingReturn;
   Stream<List<NudgeEntry>>? _entries;
 
   @override
@@ -44,7 +49,51 @@ class _TodayScreenState extends State<TodayScreen> with WidgetsBindingObserver {
   /// The app may stay open past midnight; pick a new day's nudges on resume.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _refreshIfNewDay();
+    if (state != AppLifecycleState.resumed) return;
+    _refreshIfNewDay();
+    final entry = _awaitingReturn;
+    _awaitingReturn = null;
+    if (entry != null) _askDidReachOut(entry);
+  }
+
+  Future<void> _askDidReachOut(NudgeEntry entry) async {
+    final scope = AppScope.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Did you reach out to ${entry.member.cachedName}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Not yet'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Yes'),
+          ),
+        ],
+      ),
+    );
+    if (yes != true) return;
+    // Use the latest saved state in case it changed meanwhile.
+    final member = await scope.db.memberById(entry.member.id);
+    final nudges = await scope.db.nudgesOn(entry.nudge.date);
+    final nudge = nudges
+        .where((n) => n.memberId == entry.member.id)
+        .firstOrNull;
+    if (member == null) return;
+    final today = scope.clock.today();
+    await scope.db.applyAction(
+      reachedOut(
+        member,
+        today: today,
+        nudge: nudge?.status == NudgeStatus.pending ? nudge : null,
+      ),
+    );
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Marked as reached out')),
+    );
   }
 
   void _refreshIfNewDay() {
@@ -58,6 +107,8 @@ class _TodayScreenState extends State<TodayScreen> with WidgetsBindingObserver {
       _entries = scope.db.watchNudgeEntries(today.plusDays(-(recentDays - 1)));
     });
   }
+
+  void _onLaunched(NudgeEntry entry) => _awaitingReturn = entry;
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +133,12 @@ class _TodayScreenState extends State<TodayScreen> with WidgetsBindingObserver {
               if (todays.isEmpty)
                 const _AllCaughtUp()
               else
-                for (final e in todays) NudgeCard(entry: e, today: today),
+                for (final e in todays)
+                  NudgeCard(
+                    entry: e,
+                    today: today,
+                    onReachOutLaunched: _onLaunched,
+                  ),
               if (earlier.isNotEmpty) ...[
                 const SizedBox(height: 24),
                 Text(
@@ -90,7 +146,12 @@ class _TodayScreenState extends State<TodayScreen> with WidgetsBindingObserver {
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 8),
-                for (final e in earlier) NudgeCard(entry: e, today: today),
+                for (final e in earlier)
+                  NudgeCard(
+                    entry: e,
+                    today: today,
+                    onReachOutLaunched: _onLaunched,
+                  ),
               ],
             ],
           );
@@ -137,8 +198,14 @@ class _AllCaughtUp extends StatelessWidget {
 class NudgeCard extends StatelessWidget {
   final NudgeEntry entry;
   final CalendarDate today;
+  final ValueChanged<NudgeEntry>? onReachOutLaunched;
 
-  const NudgeCard({super.key, required this.entry, required this.today});
+  const NudgeCard({
+    super.key,
+    required this.entry,
+    required this.today,
+    this.onReachOutLaunched,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -171,6 +238,21 @@ class NudgeCard extends StatelessWidget {
                   ),
                 ),
                 if (!pending) _StatusChip(nudge.status),
+                if (pending)
+                  ListenableBuilder(
+                    listenable: AppScope.of(context).contacts,
+                    builder: (context, _) {
+                      final contact = AppScope.of(context).contacts
+                          .contactFor(member);
+                      return contact == null
+                          ? const SizedBox.shrink()
+                          : ReachOutButtons(
+                              contact: contact,
+                              onLaunched: (_) =>
+                                  onReachOutLaunched?.call(entry),
+                            );
+                    },
+                  ),
               ],
             ),
             const SizedBox(height: 4),
