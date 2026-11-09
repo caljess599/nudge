@@ -8,6 +8,7 @@ import '../core/daily_nudges.dart';
 import '../core/due_dates.dart';
 import '../core/models.dart';
 import '../core/reach_methods.dart';
+import '../core/reminder.dart';
 
 import 'database.steps.dart';
 
@@ -82,6 +83,16 @@ class NewMember {
   const NewMember({required this.contactKey, required this.cachedName});
 }
 
+/// App settings as key/value pairs. Added in schema version 4.
+@DataClassName('SettingRow')
+class Settings extends Table {
+  TextColumn get key => text()();
+  TextColumn get value => text()();
+
+  @override
+  Set<Column> get primaryKey => {key};
+}
+
 class RingSummary {
   final Ring ring;
   final int memberCount;
@@ -98,12 +109,12 @@ class NudgeEntry {
   const NudgeEntry(this.nudge, this.member, this.ring);
 }
 
-@DriftDatabase(tables: [Rings, Members, DailyNudges])
+@DriftDatabase(tables: [Rings, Members, DailyNudges, Settings])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -114,6 +125,9 @@ class AppDatabase extends _$AppDatabase {
       from2To3: (m, schema) async {
         await m.addColumn(schema.members, schema.members.reachVia);
         await m.addColumn(schema.members, schema.members.reachValue);
+      },
+      from3To4: (m, schema) async {
+        await m.createTable(schema.settings);
       },
     ),
     beforeOpen: (details) async {
@@ -295,6 +309,51 @@ class AppDatabase extends _$AppDatabase {
     }
   });
 
+  // ---------- Settings ----------
+
+  static const _reminderEnabled = 'reminder.enabled';
+  static const _reminderMinutes = 'reminder.minutes';
+  static const _reminderOfferDismissed = 'reminder.offerDismissed';
+
+  Future<ReminderSettings> reminderSettings() async {
+    final rows = await select(settings).get();
+    return _toReminderSettings({for (final r in rows) r.key: r.value});
+  }
+
+  Stream<ReminderSettings> watchReminderSettings() => select(settings)
+      .watch()
+      .map(
+        (rows) => _toReminderSettings({for (final r in rows) r.key: r.value}),
+      );
+
+  Future<void> saveReminderSettings(ReminderSettings s) => batch((b) {
+    b.insertAllOnConflictUpdate(settings, [
+      SettingsCompanion.insert(
+        key: _reminderEnabled,
+        value: s.enabled ? '1' : '0',
+      ),
+      SettingsCompanion.insert(
+        key: _reminderMinutes,
+        value: '${s.time.minutesOfDay}',
+      ),
+      SettingsCompanion.insert(
+        key: _reminderOfferDismissed,
+        value: s.offerDismissed ? '1' : '0',
+      ),
+    ]);
+  });
+
+  static ReminderSettings _toReminderSettings(Map<String, String> values) {
+    final minutes = int.tryParse(values[_reminderMinutes] ?? '');
+    return ReminderSettings(
+      enabled: values[_reminderEnabled] == '1',
+      time: minutes == null
+          ? defaultReminderTime
+          : ReminderTime.fromMinutes(minutes),
+      offerDismissed: values[_reminderOfferDismissed] == '1',
+    );
+  }
+
   // ---------- Live queries for the UI ----------
 
   /// Rings ordered by period then name, each with its member count.
@@ -376,6 +435,7 @@ class AppDatabase extends _$AppDatabase {
     await delete(dailyNudges).go();
     await delete(members).go();
     await delete(rings).go();
+    await delete(settings).go();
   });
 
   // ---------- Mapping ----------
