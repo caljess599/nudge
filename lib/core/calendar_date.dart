@@ -30,6 +30,9 @@ class CalendarDate implements Comparable<CalendarDate> {
   int get month => _toUtc().month;
   int get day => _toUtc().day;
 
+  /// Local midnight on this date, for date pickers and formatting.
+  DateTime toLocalDateTime() => DateTime(year, month, day);
+
   CalendarDate plusDays(int days) => CalendarDate.fromEpochDay(epochDay + days);
 
   /// Whole days from [other] to this date. Positive if this date is later.
