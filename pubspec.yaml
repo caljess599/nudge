@@ -38,7 +38,9 @@ dependencies:
   path_provider: ^2.1.6
   flutter_contacts: ^2.6.0
   url_launcher: ^6.3.3
-  flutter_local_notifications: ^23.0.0
+  # Kept on 22.x: 23.0 requires compileSdk 37, which needs a newer Android
+  # Gradle plugin than this project uses (AGP 9.1.0 supports up to 36).
+  flutter_local_notifications: ^22.3.3
   flutter_timezone: ^5.1.1
   timezone: ^0.11.2
 
