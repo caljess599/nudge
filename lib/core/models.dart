@@ -1,4 +1,5 @@
 import 'calendar_date.dart';
+import 'reach_methods.dart';
 
 /// A named group of members who should be contacted every [periodDays] days.
 class Ring {
@@ -49,6 +50,14 @@ class Member {
   /// by contact syncing or relinking. Null means "use [cachedName]".
   final String? nickname;
 
+  /// Preferred way to reach this person. Null shows the default Call /
+  /// Text / contact card buttons.
+  final ReachMethod? reachVia;
+
+  /// The phone number or link for [reachVia]. Null for phone-based methods
+  /// means "the contact's mobile (or first) number at the time".
+  final String? reachValue;
+
   final int ringId;
 
   /// Reference date used until the first contact. Randomly offset within
@@ -66,6 +75,8 @@ class Member {
     required this.ringId,
     required this.baselineDate,
     this.nickname,
+    this.reachVia,
+    this.reachValue,
     this.lastContacted,
     this.snoozedUntil,
     this.lastSurfaced,
@@ -83,6 +94,8 @@ class Member {
     int? ringId,
     CalendarDate? baselineDate,
     String? Function()? nickname,
+    ReachMethod? Function()? reachVia,
+    String? Function()? reachValue,
     CalendarDate? Function()? lastContacted,
     CalendarDate? Function()? snoozedUntil,
     CalendarDate? Function()? lastSurfaced,
@@ -93,6 +106,8 @@ class Member {
     ringId: ringId ?? this.ringId,
     baselineDate: baselineDate ?? this.baselineDate,
     nickname: nickname != null ? normalizeNickname(nickname()) : this.nickname,
+    reachVia: reachVia != null ? reachVia() : this.reachVia,
+    reachValue: reachValue != null ? reachValue() : this.reachValue,
     lastContacted: lastContacted != null ? lastContacted() : this.lastContacted,
     snoozedUntil: snoozedUntil != null ? snoozedUntil() : this.snoozedUntil,
     lastSurfaced: lastSurfaced != null ? lastSurfaced() : this.lastSurfaced,
@@ -107,6 +122,8 @@ class Member {
       other.ringId == ringId &&
       other.baselineDate == baselineDate &&
       other.nickname == nickname &&
+      other.reachVia == reachVia &&
+      other.reachValue == reachValue &&
       other.lastContacted == lastContacted &&
       other.snoozedUntil == snoozedUntil &&
       other.lastSurfaced == lastSurfaced;
@@ -119,6 +136,8 @@ class Member {
     ringId,
     baselineDate,
     nickname,
+    reachVia,
+    reachValue,
     lastContacted,
     snoozedUntil,
     lastSurfaced,

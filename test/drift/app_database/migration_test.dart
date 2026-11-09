@@ -9,6 +9,7 @@ import 'generated/schema.dart';
 
 import 'generated/schema_v1.dart' as v1;
 import 'generated/schema_v2.dart' as v2;
+import 'generated/schema_v3.dart' as v3;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -109,4 +110,54 @@ void main() {
       );
     },
   );
+
+  test('migration from v2 to v3 keeps nicknames, adds no preference', () async {
+    const oldRings = [v2.RingsData(id: 1, name: 'Family', periodDays: 30)];
+    const oldMembers = [
+      v2.MembersData(
+        id: 1,
+        contactKey: 'k-jane',
+        cachedName: 'Jane Doe',
+        nickname: 'Mom',
+        ringId: 1,
+        baselineDate: 20000,
+        lastContacted: 20400,
+      ),
+    ];
+    const oldNudges = [
+      v2.DailyNudgesData(date: 20405, memberId: 1, status: 'skipped'),
+    ];
+
+    await verifier.testWithDataIntegrity(
+      oldVersion: 2,
+      newVersion: 3,
+      createOld: v2.DatabaseAtV2.new,
+      createNew: v3.DatabaseAtV3.new,
+      openTestedDatabase: AppDatabase.new,
+      createItems: (batch, oldDb) {
+        batch.insertAll(oldDb.rings, oldRings);
+        batch.insertAll(oldDb.members, oldMembers);
+        batch.insertAll(oldDb.dailyNudges, oldNudges);
+      },
+      validateItems: (newDb) async {
+        expect(await newDb.select(newDb.rings).get(), const [
+          v3.RingsData(id: 1, name: 'Family', periodDays: 30),
+        ]);
+        expect(await newDb.select(newDb.members).get(), const [
+          v3.MembersData(
+            id: 1,
+            contactKey: 'k-jane',
+            cachedName: 'Jane Doe',
+            nickname: 'Mom',
+            ringId: 1,
+            baselineDate: 20000,
+            lastContacted: 20400,
+          ),
+        ]);
+        expect(await newDb.select(newDb.dailyNudges).get(), const [
+          v3.DailyNudgesData(date: 20405, memberId: 1, status: 'skipped'),
+        ]);
+      },
+    );
+  });
 }

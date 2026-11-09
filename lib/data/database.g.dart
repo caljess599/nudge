@@ -305,6 +305,26 @@ class $MembersTable extends Members with TableInfo<$MembersTable, MemberRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  @override
+  late final GeneratedColumnWithTypeConverter<ReachMethod?, String> reachVia =
+      GeneratedColumn<String>(
+        'reach_via',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      ).withConverter<ReachMethod?>($MembersTable.$converterreachVian);
+  static const VerificationMeta _reachValueMeta = const VerificationMeta(
+    'reachValue',
+  );
+  @override
+  late final GeneratedColumn<String> reachValue = GeneratedColumn<String>(
+    'reach_value',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _ringIdMeta = const VerificationMeta('ringId');
   @override
   late final GeneratedColumn<int> ringId = GeneratedColumn<int>(
@@ -359,6 +379,8 @@ class $MembersTable extends Members with TableInfo<$MembersTable, MemberRow> {
     contactKey,
     cachedName,
     nickname,
+    reachVia,
+    reachValue,
     ringId,
     baselineDate,
     lastContacted,
@@ -402,6 +424,12 @@ class $MembersTable extends Members with TableInfo<$MembersTable, MemberRow> {
         nickname.isAcceptableOrUnknown(data['nickname']!, _nicknameMeta),
       );
     }
+    if (data.containsKey('reach_value')) {
+      context.handle(
+        _reachValueMeta,
+        reachValue.isAcceptableOrUnknown(data['reach_value']!, _reachValueMeta),
+      );
+    }
     if (data.containsKey('ring_id')) {
       context.handle(
         _ringIdMeta,
@@ -434,6 +462,16 @@ class $MembersTable extends Members with TableInfo<$MembersTable, MemberRow> {
       nickname: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}nickname'],
+      ),
+      reachVia: $MembersTable.$converterreachVian.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}reach_via'],
+        ),
+      ),
+      reachValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reach_value'],
       ),
       ringId: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
@@ -471,6 +509,10 @@ class $MembersTable extends Members with TableInfo<$MembersTable, MemberRow> {
     return $MembersTable(attachedDatabase, alias);
   }
 
+  static JsonTypeConverter2<ReachMethod, String, String> $converterreachVia =
+      const EnumNameConverter<ReachMethod>(ReachMethod.values);
+  static JsonTypeConverter2<ReachMethod?, String?, String?>
+  $converterreachVian = JsonTypeConverter2.asNullable($converterreachVia);
   static TypeConverter<CalendarDate, int> $converterbaselineDate =
       const CalendarDateConverter();
   static TypeConverter<CalendarDate, int> $converterlastContacted =
@@ -497,6 +539,11 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
   /// Name used only inside Nudge. Added in schema version 2.
   final String? nickname;
 
+  /// Preferred way to reach this person, and the number or link to use.
+  /// Added in schema version 3.
+  final ReachMethod? reachVia;
+  final String? reachValue;
+
   /// RESTRICT: a ring with members can't be deleted until they're moved.
   final int ringId;
   final CalendarDate baselineDate;
@@ -508,6 +555,8 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
     required this.contactKey,
     required this.cachedName,
     this.nickname,
+    this.reachVia,
+    this.reachValue,
     required this.ringId,
     required this.baselineDate,
     this.lastContacted,
@@ -522,6 +571,14 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
     map['cached_name'] = Variable<String>(cachedName);
     if (!nullToAbsent || nickname != null) {
       map['nickname'] = Variable<String>(nickname);
+    }
+    if (!nullToAbsent || reachVia != null) {
+      map['reach_via'] = Variable<String>(
+        $MembersTable.$converterreachVian.toSql(reachVia),
+      );
+    }
+    if (!nullToAbsent || reachValue != null) {
+      map['reach_value'] = Variable<String>(reachValue);
     }
     map['ring_id'] = Variable<int>(ringId);
     {
@@ -555,6 +612,12 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
       nickname: nickname == null && nullToAbsent
           ? const Value.absent()
           : Value(nickname),
+      reachVia: reachVia == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reachVia),
+      reachValue: reachValue == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reachValue),
       ringId: Value(ringId),
       baselineDate: Value(baselineDate),
       lastContacted: lastContacted == null && nullToAbsent
@@ -579,6 +642,10 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
       contactKey: serializer.fromJson<String>(json['contactKey']),
       cachedName: serializer.fromJson<String>(json['cachedName']),
       nickname: serializer.fromJson<String?>(json['nickname']),
+      reachVia: $MembersTable.$converterreachVian.fromJson(
+        serializer.fromJson<String?>(json['reachVia']),
+      ),
+      reachValue: serializer.fromJson<String?>(json['reachValue']),
       ringId: serializer.fromJson<int>(json['ringId']),
       baselineDate: serializer.fromJson<CalendarDate>(json['baselineDate']),
       lastContacted: serializer.fromJson<CalendarDate?>(json['lastContacted']),
@@ -594,6 +661,10 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
       'contactKey': serializer.toJson<String>(contactKey),
       'cachedName': serializer.toJson<String>(cachedName),
       'nickname': serializer.toJson<String?>(nickname),
+      'reachVia': serializer.toJson<String?>(
+        $MembersTable.$converterreachVian.toJson(reachVia),
+      ),
+      'reachValue': serializer.toJson<String?>(reachValue),
       'ringId': serializer.toJson<int>(ringId),
       'baselineDate': serializer.toJson<CalendarDate>(baselineDate),
       'lastContacted': serializer.toJson<CalendarDate?>(lastContacted),
@@ -607,6 +678,8 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
     String? contactKey,
     String? cachedName,
     Value<String?> nickname = const Value.absent(),
+    Value<ReachMethod?> reachVia = const Value.absent(),
+    Value<String?> reachValue = const Value.absent(),
     int? ringId,
     CalendarDate? baselineDate,
     Value<CalendarDate?> lastContacted = const Value.absent(),
@@ -617,6 +690,8 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
     contactKey: contactKey ?? this.contactKey,
     cachedName: cachedName ?? this.cachedName,
     nickname: nickname.present ? nickname.value : this.nickname,
+    reachVia: reachVia.present ? reachVia.value : this.reachVia,
+    reachValue: reachValue.present ? reachValue.value : this.reachValue,
     ringId: ringId ?? this.ringId,
     baselineDate: baselineDate ?? this.baselineDate,
     lastContacted: lastContacted.present
@@ -635,6 +710,10 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
           ? data.cachedName.value
           : this.cachedName,
       nickname: data.nickname.present ? data.nickname.value : this.nickname,
+      reachVia: data.reachVia.present ? data.reachVia.value : this.reachVia,
+      reachValue: data.reachValue.present
+          ? data.reachValue.value
+          : this.reachValue,
       ringId: data.ringId.present ? data.ringId.value : this.ringId,
       baselineDate: data.baselineDate.present
           ? data.baselineDate.value
@@ -658,6 +737,8 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
           ..write('contactKey: $contactKey, ')
           ..write('cachedName: $cachedName, ')
           ..write('nickname: $nickname, ')
+          ..write('reachVia: $reachVia, ')
+          ..write('reachValue: $reachValue, ')
           ..write('ringId: $ringId, ')
           ..write('baselineDate: $baselineDate, ')
           ..write('lastContacted: $lastContacted, ')
@@ -673,6 +754,8 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
     contactKey,
     cachedName,
     nickname,
+    reachVia,
+    reachValue,
     ringId,
     baselineDate,
     lastContacted,
@@ -687,6 +770,8 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
           other.contactKey == this.contactKey &&
           other.cachedName == this.cachedName &&
           other.nickname == this.nickname &&
+          other.reachVia == this.reachVia &&
+          other.reachValue == this.reachValue &&
           other.ringId == this.ringId &&
           other.baselineDate == this.baselineDate &&
           other.lastContacted == this.lastContacted &&
@@ -699,6 +784,8 @@ class MembersCompanion extends UpdateCompanion<MemberRow> {
   final Value<String> contactKey;
   final Value<String> cachedName;
   final Value<String?> nickname;
+  final Value<ReachMethod?> reachVia;
+  final Value<String?> reachValue;
   final Value<int> ringId;
   final Value<CalendarDate> baselineDate;
   final Value<CalendarDate?> lastContacted;
@@ -709,6 +796,8 @@ class MembersCompanion extends UpdateCompanion<MemberRow> {
     this.contactKey = const Value.absent(),
     this.cachedName = const Value.absent(),
     this.nickname = const Value.absent(),
+    this.reachVia = const Value.absent(),
+    this.reachValue = const Value.absent(),
     this.ringId = const Value.absent(),
     this.baselineDate = const Value.absent(),
     this.lastContacted = const Value.absent(),
@@ -720,6 +809,8 @@ class MembersCompanion extends UpdateCompanion<MemberRow> {
     required String contactKey,
     required String cachedName,
     this.nickname = const Value.absent(),
+    this.reachVia = const Value.absent(),
+    this.reachValue = const Value.absent(),
     required int ringId,
     required CalendarDate baselineDate,
     this.lastContacted = const Value.absent(),
@@ -734,6 +825,8 @@ class MembersCompanion extends UpdateCompanion<MemberRow> {
     Expression<String>? contactKey,
     Expression<String>? cachedName,
     Expression<String>? nickname,
+    Expression<String>? reachVia,
+    Expression<String>? reachValue,
     Expression<int>? ringId,
     Expression<int>? baselineDate,
     Expression<int>? lastContacted,
@@ -745,6 +838,8 @@ class MembersCompanion extends UpdateCompanion<MemberRow> {
       if (contactKey != null) 'contact_key': contactKey,
       if (cachedName != null) 'cached_name': cachedName,
       if (nickname != null) 'nickname': nickname,
+      if (reachVia != null) 'reach_via': reachVia,
+      if (reachValue != null) 'reach_value': reachValue,
       if (ringId != null) 'ring_id': ringId,
       if (baselineDate != null) 'baseline_date': baselineDate,
       if (lastContacted != null) 'last_contacted': lastContacted,
@@ -758,6 +853,8 @@ class MembersCompanion extends UpdateCompanion<MemberRow> {
     Value<String>? contactKey,
     Value<String>? cachedName,
     Value<String?>? nickname,
+    Value<ReachMethod?>? reachVia,
+    Value<String?>? reachValue,
     Value<int>? ringId,
     Value<CalendarDate>? baselineDate,
     Value<CalendarDate?>? lastContacted,
@@ -769,6 +866,8 @@ class MembersCompanion extends UpdateCompanion<MemberRow> {
       contactKey: contactKey ?? this.contactKey,
       cachedName: cachedName ?? this.cachedName,
       nickname: nickname ?? this.nickname,
+      reachVia: reachVia ?? this.reachVia,
+      reachValue: reachValue ?? this.reachValue,
       ringId: ringId ?? this.ringId,
       baselineDate: baselineDate ?? this.baselineDate,
       lastContacted: lastContacted ?? this.lastContacted,
@@ -791,6 +890,14 @@ class MembersCompanion extends UpdateCompanion<MemberRow> {
     }
     if (nickname.present) {
       map['nickname'] = Variable<String>(nickname.value);
+    }
+    if (reachVia.present) {
+      map['reach_via'] = Variable<String>(
+        $MembersTable.$converterreachVian.toSql(reachVia.value),
+      );
+    }
+    if (reachValue.present) {
+      map['reach_value'] = Variable<String>(reachValue.value);
     }
     if (ringId.present) {
       map['ring_id'] = Variable<int>(ringId.value);
@@ -825,6 +932,8 @@ class MembersCompanion extends UpdateCompanion<MemberRow> {
           ..write('contactKey: $contactKey, ')
           ..write('cachedName: $cachedName, ')
           ..write('nickname: $nickname, ')
+          ..write('reachVia: $reachVia, ')
+          ..write('reachValue: $reachValue, ')
           ..write('ringId: $ringId, ')
           ..write('baselineDate: $baselineDate, ')
           ..write('lastContacted: $lastContacted, ')
@@ -1392,6 +1501,8 @@ typedef $$MembersTableCreateCompanionBuilder = MembersCompanion Function({
   required String contactKey,
   required String cachedName,
   Value<String?> nickname,
+  Value<ReachMethod?> reachVia,
+  Value<String?> reachValue,
   required int ringId,
   required CalendarDate baselineDate,
   Value<CalendarDate?> lastContacted,
@@ -1403,6 +1514,8 @@ typedef $$MembersTableUpdateCompanionBuilder = MembersCompanion Function({
   Value<String> contactKey,
   Value<String> cachedName,
   Value<String?> nickname,
+  Value<ReachMethod?> reachVia,
+  Value<String?> reachValue,
   Value<int> ringId,
   Value<CalendarDate> baselineDate,
   Value<CalendarDate?> lastContacted,
@@ -1476,6 +1589,17 @@ class $$MembersTableFilterComposer
 
   ColumnFilters<String> get nickname => $composableBuilder(
     column: $table.nickname,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<ReachMethod?, ReachMethod, String>
+  get reachVia => $composableBuilder(
+    column: $table.reachVia,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get reachValue => $composableBuilder(
+    column: $table.reachValue,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1581,6 +1705,16 @@ class $$MembersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get reachVia => $composableBuilder(
+    column: $table.reachVia,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reachValue => $composableBuilder(
+    column: $table.reachValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get baselineDate => $composableBuilder(
     column: $table.baselineDate,
     builder: (column) => ColumnOrderings(column),
@@ -1649,6 +1783,14 @@ class $$MembersTableAnnotationComposer
 
   GeneratedColumn<String> get nickname =>
       $composableBuilder(column: $table.nickname, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<ReachMethod?, String> get reachVia =>
+      $composableBuilder(column: $table.reachVia, builder: (column) => column);
+
+  GeneratedColumn<String> get reachValue => $composableBuilder(
+    column: $table.reachValue,
+    builder: (column) => column,
+  );
 
   GeneratedColumnWithTypeConverter<CalendarDate, int> get baselineDate =>
       $composableBuilder(
@@ -1755,6 +1897,8 @@ class $$MembersTableTableManager
                 Value<String> contactKey = const Value.absent(),
                 Value<String> cachedName = const Value.absent(),
                 Value<String?> nickname = const Value.absent(),
+                Value<ReachMethod?> reachVia = const Value.absent(),
+                Value<String?> reachValue = const Value.absent(),
                 Value<int> ringId = const Value.absent(),
                 Value<CalendarDate> baselineDate = const Value.absent(),
                 Value<CalendarDate?> lastContacted = const Value.absent(),
@@ -1765,6 +1909,8 @@ class $$MembersTableTableManager
                 contactKey: contactKey,
                 cachedName: cachedName,
                 nickname: nickname,
+                reachVia: reachVia,
+                reachValue: reachValue,
                 ringId: ringId,
                 baselineDate: baselineDate,
                 lastContacted: lastContacted,
@@ -1777,6 +1923,8 @@ class $$MembersTableTableManager
                 required String contactKey,
                 required String cachedName,
                 Value<String?> nickname = const Value.absent(),
+                Value<ReachMethod?> reachVia = const Value.absent(),
+                Value<String?> reachValue = const Value.absent(),
                 required int ringId,
                 required CalendarDate baselineDate,
                 Value<CalendarDate?> lastContacted = const Value.absent(),
@@ -1787,6 +1935,8 @@ class $$MembersTableTableManager
                 contactKey: contactKey,
                 cachedName: cachedName,
                 nickname: nickname,
+                reachVia: reachVia,
+                reachValue: reachValue,
                 ringId: ringId,
                 baselineDate: baselineDate,
                 lastContacted: lastContacted,
