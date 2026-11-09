@@ -7,6 +7,7 @@ import 'contacts/fake_contacts_source.dart';
 import 'contacts/reach_out_launcher.dart';
 import 'core/clock.dart';
 import 'data/open_database.dart';
+import 'notifications/local_reminder_scheduler.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,6 +19,7 @@ void main() {
       // Debug builds add fake contacts so emulators have someone to pick.
       contactsSource: kDebugMode ? const DebugContactsSource(device) : device,
       launcher: const UrlReachOutLauncher(),
+      reminderScheduler: LocalReminderScheduler(),
     ),
   );
 }

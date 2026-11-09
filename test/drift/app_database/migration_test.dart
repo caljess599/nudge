@@ -10,6 +10,7 @@ import 'generated/schema.dart';
 import 'generated/schema_v1.dart' as v1;
 import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
+import 'generated/schema_v4.dart' as v4;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -157,6 +158,50 @@ void main() {
         expect(await newDb.select(newDb.dailyNudges).get(), const [
           v3.DailyNudgesData(date: 20405, memberId: 1, status: 'skipped'),
         ]);
+      },
+    );
+  });
+
+  test('migration from v3 to v4 adds an empty settings table', () async {
+    const oldRings = [v3.RingsData(id: 1, name: 'Family', periodDays: 30)];
+    const oldMembers = [
+      v3.MembersData(
+        id: 1,
+        contactKey: 'k-jane',
+        cachedName: 'Jane Doe',
+        nickname: 'Mom',
+        reachVia: 'whatsapp',
+        ringId: 1,
+        baselineDate: 20000,
+      ),
+    ];
+
+    await verifier.testWithDataIntegrity(
+      oldVersion: 3,
+      newVersion: 4,
+      createOld: v3.DatabaseAtV3.new,
+      createNew: v4.DatabaseAtV4.new,
+      openTestedDatabase: AppDatabase.new,
+      createItems: (batch, oldDb) {
+        batch.insertAll(oldDb.rings, oldRings);
+        batch.insertAll(oldDb.members, oldMembers);
+      },
+      validateItems: (newDb) async {
+        expect(await newDb.select(newDb.rings).get(), const [
+          v4.RingsData(id: 1, name: 'Family', periodDays: 30),
+        ]);
+        expect(await newDb.select(newDb.members).get(), const [
+          v4.MembersData(
+            id: 1,
+            contactKey: 'k-jane',
+            cachedName: 'Jane Doe',
+            nickname: 'Mom',
+            reachVia: 'whatsapp',
+            ringId: 1,
+            baselineDate: 20000,
+          ),
+        ]);
+        expect(await newDb.select(newDb.settings).get(), isEmpty);
       },
     );
   });
