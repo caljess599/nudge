@@ -5,10 +5,13 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nudge/app.dart';
+import 'package:nudge/contacts/fake_contacts_source.dart';
 import 'package:nudge/core/calendar_date.dart';
 import 'package:nudge/core/clock.dart';
 import 'package:nudge/core/models.dart';
 import 'package:nudge/data/database.dart';
+
+import 'test_launcher.dart';
 
 void main() {
   late AppDatabase db;
@@ -26,7 +29,14 @@ void main() {
   tearDown(() => db.close());
 
   Future<void> pumpApp(WidgetTester tester) async {
-    await tester.pumpWidget(NudgeApp(db: db, clock: FixedClock(today)));
+    await tester.pumpWidget(
+      NudgeApp(
+        db: db,
+        clock: FixedClock(today),
+        contactsSource: FakeContactsSource(contacts: const []),
+        launcher: RecordingLauncher(),
+      ),
+    );
     await tester.pumpAndSettle();
   }
 
@@ -265,7 +275,12 @@ void main() {
     final moved = (await db.memberById(ana.id))!;
     expect(moved.ringId, to.id);
     expect(moved.lastContacted, today);
-    expect(find.text('No one in this ring yet.\nMonthly'), findsOneWidget);
+    expect(
+      find.text(
+        'No one in this ring yet.\nMonthly\n\nTap "Add people" to choose from your contacts.',
+      ),
+      findsOneWidget,
+    );
     await unmount(tester);
   });
 }
