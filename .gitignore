@@ -26,6 +26,13 @@ build/
 coverage/
 *.g.dart.bak
 pubspec.lock.bak
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.widget_preview/
+migrate_working_dir/
+# Symbolication / obfuscation output from release builds
+app.*.symbols
+app.*.map.json
 
 # ---------- Android ----------
 **/android/.gradle/
@@ -68,3 +75,11 @@ pubspec.lock.bak
 # ---------- Misc ----------
 *.log
 *.tmp
+*.class
+*.pyc
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
