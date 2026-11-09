@@ -1,0 +1,70 @@
+# ---------- Secrets and signing (NEVER commit these) ----------
+*.jks
+*.keystore
+*.p12
+*.p8
+*.pem
+*.mobileprovision
+key.properties
+**/android/key.properties
+**/android/local.properties
+.env
+.env.*
+google-services.json
+GoogleService-Info.plist
+secrets.*
+*.secret
+
+# ---------- Flutter / Dart ----------
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+coverage/
+*.g.dart.bak
+pubspec.lock.bak
+
+# ---------- Android ----------
+**/android/.gradle/
+**/android/captures/
+**/android/gradlew
+**/android/gradlew.bat
+**/android/app/debug
+**/android/app/profile
+**/android/app/release
+*.apk
+*.aab
+*.so
+
+# ---------- iOS / macOS ----------
+**/ios/**/*.mode1v3
+**/ios/**/*.mode2v3
+**/ios/**/*.moved-aside
+**/ios/**/*.pbxuser
+**/ios/**/*.perspectivev3
+**/ios/**/xcuserdata/
+**/ios/.generated/
+**/ios/Flutter/ephemeral/
+**/ios/Pods/
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Flutter/Generated.xcconfig
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.*
+*.ipa
+*.dSYM.zip
+.DS_Store
+
+# ---------- IDEs ----------
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.swp
+
+# ---------- Misc ----------
+*.log
+*.tmp
