@@ -6,6 +6,7 @@ import '../core/calendar_date.dart';
 import '../core/actions.dart';
 import '../core/daily_nudges.dart';
 import '../core/due_dates.dart';
+import '../core/export_format.dart';
 import '../core/models.dart';
 import '../core/reach_methods.dart';
 import '../core/reminder.dart';
@@ -436,6 +437,58 @@ class AppDatabase extends _$AppDatabase {
     await delete(members).go();
     await delete(rings).go();
     await delete(settings).go();
+  });
+
+  // ---------- Export / import ----------
+
+  Future<ExportData> exportData() => transaction(
+    () async => ExportData(
+      rings: await allRings(),
+      members: (await allMembers())..sort((a, b) => a.id.compareTo(b.id)),
+      history: (await select(dailyNudges).get()).map(_nudge).toList()
+        ..sort((a, b) {
+          final byDate = a.date.compareTo(b.date);
+          return byDate != 0 ? byDate : a.memberId.compareTo(b.memberId);
+        }),
+      reminder: await reminderSettings(),
+    ),
+  );
+
+  /// Replaces everything with [data] in one transaction: if anything
+  /// fails, the existing data is left untouched. Ids are kept so history
+  /// still points at the right people.
+  Future<void> replaceAllData(ExportData data) => transaction(() async {
+    await deleteAllData();
+    for (final r in data.rings) {
+      await into(rings).insert(
+        RingsCompanion.insert(
+          id: Value(r.id),
+          name: r.name,
+          periodDays: r.periodDays,
+        ),
+      );
+    }
+    for (final m in data.members) {
+      await into(members).insert(
+        MembersCompanion.insert(
+          id: Value(m.id),
+          contactKey: m.contactKey,
+          cachedName: m.cachedName,
+          nickname: Value(m.nickname),
+          reachVia: Value(m.reachVia),
+          reachValue: Value(m.reachValue),
+          ringId: m.ringId,
+          baselineDate: m.baselineDate,
+          lastContacted: Value(m.lastContacted),
+          snoozedUntil: Value(m.snoozedUntil),
+          lastSurfaced: Value(m.lastSurfaced),
+        ),
+      );
+    }
+    for (final n in data.history) {
+      await into(dailyNudges).insert(_nudgeCompanion(n));
+    }
+    await saveReminderSettings(data.reminder);
   });
 
   // ---------- Mapping ----------
