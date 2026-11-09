@@ -8,8 +8,12 @@
          No exact-alarm permissions: the reminder is inexact by design. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
+    <!-- Auto Backup: only the database, see res/xml/*_rules.xml. -->
     <application
-        android:label="nudge"
+        android:label="Nudge"
+        android:allowBackup="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
