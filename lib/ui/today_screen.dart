@@ -244,13 +244,12 @@ class NudgeCard extends StatelessWidget {
                     builder: (context, _) {
                       final contact = AppScope.of(context).contacts
                           .contactFor(member);
-                      return contact == null
-                          ? const SizedBox.shrink()
-                          : ReachOutButtons(
-                              contact: contact,
-                              onLaunched: (_) =>
-                                  onReachOutLaunched?.call(entry),
-                            );
+                      // A saved link works even without contacts access.
+                      return ReachOutButtons(
+                        member: member,
+                        contact: contact,
+                        onLaunched: () => onReachOutLaunched?.call(entry),
+                      );
                     },
                   ),
               ],

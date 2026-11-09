@@ -14,6 +14,7 @@ import 'contact_picker_screen.dart';
 import 'formatting.dart';
 import 'nickname_dialog.dart';
 import 'reach_out.dart';
+import 'reach_preference_screen.dart';
 import 'ring_form_dialog.dart';
 
 class RingDetailScreen extends StatefulWidget {
@@ -336,9 +337,27 @@ Future<void> _showMemberSheet(
               ].join('\n'),
             ),
             isThreeLine: member.nickname != null,
-            trailing: contact == null
-                ? null
-                : ReachOutButtons(contact: contact),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: ReachOutButtons(member: member, contact: contact),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.forum_outlined),
+            title: const Text('Reach out via'),
+            subtitle: Text(reachSummary(member)),
+            onTap: () {
+              Navigator.pop(sheetContext);
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) =>
+                      ReachPreferenceScreen(member: member, contact: contact),
+                ),
+              );
+            },
           ),
           if (needsRelinking)
             ListTile(
