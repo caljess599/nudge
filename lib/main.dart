@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'app.dart';
+import 'backup/data_files.dart';
 import 'contacts/device_contacts_source.dart';
 import 'contacts/fake_contacts_source.dart';
 import 'contacts/reach_out_launcher.dart';
@@ -20,6 +21,7 @@ void main() {
       contactsSource: kDebugMode ? const DebugContactsSource(device) : device,
       launcher: const UrlReachOutLauncher(),
       reminderScheduler: LocalReminderScheduler(),
+      dataFiles: const PickerDataFiles(),
     ),
   );
 }

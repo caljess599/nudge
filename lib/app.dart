@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'backup/backup.dart';
+import 'backup/data_files.dart';
 import 'contacts/contact_directory.dart';
 import 'contacts/contacts_source.dart';
 import 'contacts/reach_out_launcher.dart';
@@ -20,6 +22,7 @@ class AppScope extends InheritedWidget {
   final ContactDirectory contacts;
   final ReachOutLauncher launcher;
   final ReminderController reminders;
+  final Backup backup;
 
   const AppScope({
     super.key,
@@ -28,6 +31,7 @@ class AppScope extends InheritedWidget {
     required this.contacts,
     required this.launcher,
     required this.reminders,
+    required this.backup,
     required super.child,
   });
 
@@ -43,7 +47,8 @@ class AppScope extends InheritedWidget {
       clock != oldWidget.clock ||
       contacts != oldWidget.contacts ||
       launcher != oldWidget.launcher ||
-      reminders != oldWidget.reminders;
+      reminders != oldWidget.reminders ||
+      backup != oldWidget.backup;
 }
 
 class NudgeApp extends StatefulWidget {
@@ -52,6 +57,7 @@ class NudgeApp extends StatefulWidget {
   final ContactsSource contactsSource;
   final ReachOutLauncher launcher;
   final ReminderScheduler reminderScheduler;
+  final DataFiles dataFiles;
 
   const NudgeApp({
     super.key,
@@ -60,6 +66,7 @@ class NudgeApp extends StatefulWidget {
     required this.contactsSource,
     required this.launcher,
     required this.reminderScheduler,
+    required this.dataFiles,
   });
 
   @override
@@ -77,6 +84,12 @@ class _NudgeAppState extends State<NudgeApp> with WidgetsBindingObserver {
   late final ReminderController _reminders = ReminderController(
     db: widget.db,
     scheduler: widget.reminderScheduler,
+  );
+
+  late final Backup _backup = Backup(
+    db: widget.db,
+    files: widget.dataFiles,
+    contacts: _contacts,
   );
 
   @override
@@ -114,6 +127,7 @@ class _NudgeAppState extends State<NudgeApp> with WidgetsBindingObserver {
       contacts: _contacts,
       launcher: widget.launcher,
       reminders: _reminders,
+      backup: _backup,
       child: MaterialApp(
         title: 'Nudge',
         theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: _seed)),

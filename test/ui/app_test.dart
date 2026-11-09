@@ -13,6 +13,7 @@ import 'package:nudge/data/database.dart';
 import 'package:nudge/ui/today_screen.dart';
 
 import '../notifications/fake_scheduler.dart';
+import 'fake_data_files.dart';
 import 'test_launcher.dart';
 
 void main() {
@@ -38,6 +39,7 @@ void main() {
         contactsSource: FakeContactsSource(contacts: const []),
         launcher: RecordingLauncher(),
         reminderScheduler: FakeReminderScheduler(),
+        dataFiles: FakeDataFiles(),
       ),
     );
     await tester.pumpAndSettle();
