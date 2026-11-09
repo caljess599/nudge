@@ -132,6 +132,9 @@ class AppDatabase extends _$AppDatabase {
 
   // ---------- Members ----------
 
+  Stream<List<Member>> watchAllMembers() =>
+      select(members).watch().map((rows) => rows.map(_member).toList());
+
   Future<List<Member>> allMembers() async =>
       (await select(members).get()).map(_member).toList();
 
