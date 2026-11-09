@@ -7,6 +7,7 @@ import '../core/actions.dart';
 import '../core/daily_nudges.dart';
 import '../core/due_dates.dart';
 import '../core/models.dart';
+import '../core/reach_methods.dart';
 
 import 'database.steps.dart';
 
@@ -43,6 +44,11 @@ class Members extends Table {
 
   /// Name used only inside Nudge. Added in schema version 2.
   TextColumn get nickname => text().nullable()();
+
+  /// Preferred way to reach this person, and the number or link to use.
+  /// Added in schema version 3.
+  TextColumn get reachVia => textEnum<ReachMethod>().nullable()();
+  TextColumn get reachValue => text().nullable()();
 
   /// RESTRICT: a ring with members can't be deleted until they're moved.
   IntColumn get ringId =>
@@ -97,13 +103,17 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onUpgrade: stepByStep(
       from1To2: (m, schema) async {
         await m.addColumn(schema.members, schema.members.nickname);
+      },
+      from2To3: (m, schema) async {
+        await m.addColumn(schema.members, schema.members.reachVia);
+        await m.addColumn(schema.members, schema.members.reachValue);
       },
     ),
     beforeOpen: (details) async {
@@ -195,6 +205,8 @@ class AppDatabase extends _$AppDatabase {
           contactKey: Value(member.contactKey),
           cachedName: Value(member.cachedName),
           nickname: Value(member.nickname),
+          reachVia: Value(member.reachVia),
+          reachValue: Value(member.reachValue),
           ringId: Value(member.ringId),
           baselineDate: Value(member.baselineDate),
           lastContacted: Value(member.lastContacted),
@@ -208,6 +220,24 @@ class AppDatabase extends _$AppDatabase {
       (update(members)..where((m) => m.id.equals(memberId))).write(
         MembersCompanion(nickname: Value(normalizeNickname(nickname))),
       );
+
+  /// Sets how to reach a member. A null [method] clears the preference.
+  /// [value] is a phone number or link; blank means "use the default".
+  Future<void> setReachPreference(
+    int memberId,
+    ReachMethod? method, {
+    String? value,
+  }) {
+    final trimmed = value?.trim();
+    return (update(members)..where((m) => m.id.equals(memberId))).write(
+      MembersCompanion(
+        reachVia: Value(method),
+        reachValue: Value(
+          method == null || trimmed == null || trimmed.isEmpty ? null : trimmed,
+        ),
+      ),
+    );
+  }
 
   Future<void> moveMember(Member member, Ring ring) =>
       saveMember(moveToRing(member, ring));
@@ -358,6 +388,8 @@ class AppDatabase extends _$AppDatabase {
     contactKey: r.contactKey,
     cachedName: r.cachedName,
     nickname: r.nickname,
+    reachVia: r.reachVia,
+    reachValue: r.reachValue,
     ringId: r.ringId,
     baselineDate: r.baselineDate,
     lastContacted: r.lastContacted,

@@ -6,9 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nudge/contacts/contact_directory.dart';
 import 'package:nudge/contacts/contacts_source.dart';
 import 'package:nudge/contacts/fake_contacts_source.dart';
-import 'package:nudge/contacts/reach_out_launcher.dart';
 import 'package:nudge/core/calendar_date.dart';
 import 'package:nudge/core/models.dart';
+import 'package:nudge/core/reach_methods.dart';
 import 'package:nudge/data/database.dart';
 
 void main() {
@@ -139,6 +139,32 @@ void main() {
 
     await db.setNickname(m.id, '  ');
     expect((await db.memberById(m.id))!.displayName, 'Ben');
+  });
+
+  test('reach preference is saved, cleared, and survives syncing', () async {
+    final m = await add('k-ana', 'Old name');
+    await db.setReachPreference(
+      m.id,
+      ReachMethod.whatsapp,
+      value: ' +1 202 555 0101 ',
+    );
+    await directory.refresh(); // renames the member to 'Ana'
+    var saved = (await db.memberById(m.id))!;
+    expect(saved.cachedName, 'Ana');
+    expect(saved.reachVia, ReachMethod.whatsapp);
+    expect(saved.reachValue, '+1 202 555 0101');
+
+    // Blank value means "use the contact's default number".
+    await db.setReachPreference(m.id, ReachMethod.signal, value: '  ');
+    saved = (await db.memberById(m.id))!;
+    expect(saved.reachVia, ReachMethod.signal);
+    expect(saved.reachValue, isNull);
+
+    // Clearing the method clears the value too.
+    await db.setReachPreference(m.id, null, value: 'ignored');
+    saved = (await db.memberById(m.id))!;
+    expect(saved.reachVia, isNull);
+    expect(saved.reachValue, isNull);
   });
 
   test('dialableNumber keeps + and digits', () {

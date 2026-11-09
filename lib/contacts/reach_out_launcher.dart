@@ -1,35 +1,34 @@
 import 'package:url_launcher/url_launcher.dart';
 
-/// Opens the dialer or messaging app. Injected so tests don't launch
-/// anything.
+import '../core/reach_methods.dart';
+
+/// Opens the dialer, messaging app, or a custom link. Injected so tests
+/// don't launch anything.
 abstract interface class ReachOutLauncher {
-  /// Returns false if no app could handle it.
-  Future<bool> call(String number);
-
-  Future<bool> text(String number);
-}
-
-/// Keeps a leading + and digits only: "(202) 555-0101" -> "2025550101".
-String dialableNumber(String number) {
-  final trimmed = number.trim();
-  final digits = trimmed.replaceAll(RegExp(r'[^0-9]'), '');
-  return trimmed.startsWith('+') ? '+$digits' : digits;
+  /// Opens [method] for [value] (a phone number or link). Returns false if
+  /// [value] isn't usable or no app could handle it.
+  Future<bool> open(ReachMethod method, String value);
 }
 
 class UrlReachOutLauncher implements ReachOutLauncher {
   const UrlReachOutLauncher();
 
   @override
-  Future<bool> call(String number) =>
-      _launch(Uri(scheme: 'tel', path: dialableNumber(number)));
-
-  @override
-  Future<bool> text(String number) =>
-      _launch(Uri(scheme: 'sms', path: dialableNumber(number)));
-
-  Future<bool> _launch(Uri uri) async {
+  Future<bool> open(ReachMethod method, String value) async {
+    final uri = reachUri(method, value);
+    if (uri == null) return false;
+    final mode = switch (method) {
+      // Only the app itself, never a browser: if WhatsApp/Signal/Telegram
+      // isn't installed we report that instead of sending the number to
+      // the service's website.
+      ReachMethod.whatsapp ||
+      ReachMethod.signal ||
+      ReachMethod.telegram => LaunchMode.externalNonBrowserApplication,
+      ReachMethod.link => LaunchMode.externalApplication,
+      ReachMethod.call || ReachMethod.text => LaunchMode.platformDefault,
+    };
     try {
-      return await launchUrl(uri);
+      return await launchUrl(uri, mode: mode);
     } on Exception {
       return false;
     }

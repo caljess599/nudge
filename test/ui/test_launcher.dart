@@ -1,22 +1,27 @@
 import 'package:nudge/contacts/reach_out_launcher.dart';
+import 'package:nudge/core/reach_methods.dart';
 
-/// Records Call/Text requests instead of opening other apps.
+/// Records what would be opened instead of opening other apps.
 class RecordingLauncher implements ReachOutLauncher {
-  final calls = <String>[];
-  final texts = <String>[];
-  final bool succeeds;
+  final opened = <(ReachMethod, String)>[];
 
-  RecordingLauncher({this.succeeds = true});
+  /// Methods whose app "isn't installed".
+  final Set<ReachMethod> unavailable;
+
+  RecordingLauncher({this.unavailable = const {}});
+
+  List<String> get calls => _values(ReachMethod.call);
+  List<String> get texts => _values(ReachMethod.text);
+
+  List<String> _values(ReachMethod method) => [
+    for (final (m, v) in opened)
+      if (m == method) v,
+  ];
 
   @override
-  Future<bool> call(String number) async {
-    if (succeeds) calls.add(number);
-    return succeeds;
-  }
-
-  @override
-  Future<bool> text(String number) async {
-    if (succeeds) texts.add(number);
-    return succeeds;
+  Future<bool> open(ReachMethod method, String value) async {
+    if (unavailable.contains(method)) return false;
+    opened.add((method, value));
+    return true;
   }
 }
