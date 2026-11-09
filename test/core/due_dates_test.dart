@@ -107,6 +107,18 @@ void main() {
     expect(m.copyWith(), m);
   });
 
+  test('displayName prefers the nickname; blank clears it', () {
+    final m = member(1, baseline: d(1));
+    expect(m.displayName, 'Person 1');
+    final mom = m.copyWith(nickname: () => '  Mom ');
+    expect(mom.nickname, 'Mom');
+    expect(mom.displayName, 'Mom');
+    expect(mom.cachedName, 'Person 1');
+    expect(mom.copyWith(nickname: () => '   ').nickname, isNull);
+    expect(mom.copyWith(nickname: () => null).displayName, 'Person 1');
+    expect(mom.copyWith(ringId: 2).nickname, 'Mom');
+  });
+
   test('NudgeStatus covers the spec values', () {
     expect(NudgeStatus.values.map((s) => s.name), [
       'pending',

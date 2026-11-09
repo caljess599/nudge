@@ -294,6 +294,17 @@ class $MembersTable extends Members with TableInfo<$MembersTable, MemberRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _nicknameMeta = const VerificationMeta(
+    'nickname',
+  );
+  @override
+  late final GeneratedColumn<String> nickname = GeneratedColumn<String>(
+    'nickname',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _ringIdMeta = const VerificationMeta('ringId');
   @override
   late final GeneratedColumn<int> ringId = GeneratedColumn<int>(
@@ -347,6 +358,7 @@ class $MembersTable extends Members with TableInfo<$MembersTable, MemberRow> {
     id,
     contactKey,
     cachedName,
+    nickname,
     ringId,
     baselineDate,
     lastContacted,
@@ -384,6 +396,12 @@ class $MembersTable extends Members with TableInfo<$MembersTable, MemberRow> {
     } else if (isInserting) {
       context.missing(_cachedNameMeta);
     }
+    if (data.containsKey('nickname')) {
+      context.handle(
+        _nicknameMeta,
+        nickname.isAcceptableOrUnknown(data['nickname']!, _nicknameMeta),
+      );
+    }
     if (data.containsKey('ring_id')) {
       context.handle(
         _ringIdMeta,
@@ -413,6 +431,10 @@ class $MembersTable extends Members with TableInfo<$MembersTable, MemberRow> {
         DriftSqlType.string,
         data['${effectivePrefix}cached_name'],
       )!,
+      nickname: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}nickname'],
+      ),
       ringId: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}ring_id'],
@@ -472,6 +494,9 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
   final String contactKey;
   final String cachedName;
 
+  /// Name used only inside Nudge. Added in schema version 2.
+  final String? nickname;
+
   /// RESTRICT: a ring with members can't be deleted until they're moved.
   final int ringId;
   final CalendarDate baselineDate;
@@ -482,6 +507,7 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
     required this.id,
     required this.contactKey,
     required this.cachedName,
+    this.nickname,
     required this.ringId,
     required this.baselineDate,
     this.lastContacted,
@@ -494,6 +520,9 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
     map['id'] = Variable<int>(id);
     map['contact_key'] = Variable<String>(contactKey);
     map['cached_name'] = Variable<String>(cachedName);
+    if (!nullToAbsent || nickname != null) {
+      map['nickname'] = Variable<String>(nickname);
+    }
     map['ring_id'] = Variable<int>(ringId);
     {
       map['baseline_date'] = Variable<int>(
@@ -523,6 +552,9 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
       id: Value(id),
       contactKey: Value(contactKey),
       cachedName: Value(cachedName),
+      nickname: nickname == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nickname),
       ringId: Value(ringId),
       baselineDate: Value(baselineDate),
       lastContacted: lastContacted == null && nullToAbsent
@@ -546,6 +578,7 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
       id: serializer.fromJson<int>(json['id']),
       contactKey: serializer.fromJson<String>(json['contactKey']),
       cachedName: serializer.fromJson<String>(json['cachedName']),
+      nickname: serializer.fromJson<String?>(json['nickname']),
       ringId: serializer.fromJson<int>(json['ringId']),
       baselineDate: serializer.fromJson<CalendarDate>(json['baselineDate']),
       lastContacted: serializer.fromJson<CalendarDate?>(json['lastContacted']),
@@ -560,6 +593,7 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
       'id': serializer.toJson<int>(id),
       'contactKey': serializer.toJson<String>(contactKey),
       'cachedName': serializer.toJson<String>(cachedName),
+      'nickname': serializer.toJson<String?>(nickname),
       'ringId': serializer.toJson<int>(ringId),
       'baselineDate': serializer.toJson<CalendarDate>(baselineDate),
       'lastContacted': serializer.toJson<CalendarDate?>(lastContacted),
@@ -572,6 +606,7 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
     int? id,
     String? contactKey,
     String? cachedName,
+    Value<String?> nickname = const Value.absent(),
     int? ringId,
     CalendarDate? baselineDate,
     Value<CalendarDate?> lastContacted = const Value.absent(),
@@ -581,6 +616,7 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
     id: id ?? this.id,
     contactKey: contactKey ?? this.contactKey,
     cachedName: cachedName ?? this.cachedName,
+    nickname: nickname.present ? nickname.value : this.nickname,
     ringId: ringId ?? this.ringId,
     baselineDate: baselineDate ?? this.baselineDate,
     lastContacted: lastContacted.present
@@ -598,6 +634,7 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
       cachedName: data.cachedName.present
           ? data.cachedName.value
           : this.cachedName,
+      nickname: data.nickname.present ? data.nickname.value : this.nickname,
       ringId: data.ringId.present ? data.ringId.value : this.ringId,
       baselineDate: data.baselineDate.present
           ? data.baselineDate.value
@@ -620,6 +657,7 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
           ..write('id: $id, ')
           ..write('contactKey: $contactKey, ')
           ..write('cachedName: $cachedName, ')
+          ..write('nickname: $nickname, ')
           ..write('ringId: $ringId, ')
           ..write('baselineDate: $baselineDate, ')
           ..write('lastContacted: $lastContacted, ')
@@ -634,6 +672,7 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
     id,
     contactKey,
     cachedName,
+    nickname,
     ringId,
     baselineDate,
     lastContacted,
@@ -647,6 +686,7 @@ class MemberRow extends DataClass implements Insertable<MemberRow> {
           other.id == this.id &&
           other.contactKey == this.contactKey &&
           other.cachedName == this.cachedName &&
+          other.nickname == this.nickname &&
           other.ringId == this.ringId &&
           other.baselineDate == this.baselineDate &&
           other.lastContacted == this.lastContacted &&
@@ -658,6 +698,7 @@ class MembersCompanion extends UpdateCompanion<MemberRow> {
   final Value<int> id;
   final Value<String> contactKey;
   final Value<String> cachedName;
+  final Value<String?> nickname;
   final Value<int> ringId;
   final Value<CalendarDate> baselineDate;
   final Value<CalendarDate?> lastContacted;
@@ -667,6 +708,7 @@ class MembersCompanion extends UpdateCompanion<MemberRow> {
     this.id = const Value.absent(),
     this.contactKey = const Value.absent(),
     this.cachedName = const Value.absent(),
+    this.nickname = const Value.absent(),
     this.ringId = const Value.absent(),
     this.baselineDate = const Value.absent(),
     this.lastContacted = const Value.absent(),
@@ -677,6 +719,7 @@ class MembersCompanion extends UpdateCompanion<MemberRow> {
     this.id = const Value.absent(),
     required String contactKey,
     required String cachedName,
+    this.nickname = const Value.absent(),
     required int ringId,
     required CalendarDate baselineDate,
     this.lastContacted = const Value.absent(),
@@ -690,6 +733,7 @@ class MembersCompanion extends UpdateCompanion<MemberRow> {
     Expression<int>? id,
     Expression<String>? contactKey,
     Expression<String>? cachedName,
+    Expression<String>? nickname,
     Expression<int>? ringId,
     Expression<int>? baselineDate,
     Expression<int>? lastContacted,
@@ -700,6 +744,7 @@ class MembersCompanion extends UpdateCompanion<MemberRow> {
       if (id != null) 'id': id,
       if (contactKey != null) 'contact_key': contactKey,
       if (cachedName != null) 'cached_name': cachedName,
+      if (nickname != null) 'nickname': nickname,
       if (ringId != null) 'ring_id': ringId,
       if (baselineDate != null) 'baseline_date': baselineDate,
       if (lastContacted != null) 'last_contacted': lastContacted,
@@ -712,6 +757,7 @@ class MembersCompanion extends UpdateCompanion<MemberRow> {
     Value<int>? id,
     Value<String>? contactKey,
     Value<String>? cachedName,
+    Value<String?>? nickname,
     Value<int>? ringId,
     Value<CalendarDate>? baselineDate,
     Value<CalendarDate?>? lastContacted,
@@ -722,6 +768,7 @@ class MembersCompanion extends UpdateCompanion<MemberRow> {
       id: id ?? this.id,
       contactKey: contactKey ?? this.contactKey,
       cachedName: cachedName ?? this.cachedName,
+      nickname: nickname ?? this.nickname,
       ringId: ringId ?? this.ringId,
       baselineDate: baselineDate ?? this.baselineDate,
       lastContacted: lastContacted ?? this.lastContacted,
@@ -741,6 +788,9 @@ class MembersCompanion extends UpdateCompanion<MemberRow> {
     }
     if (cachedName.present) {
       map['cached_name'] = Variable<String>(cachedName.value);
+    }
+    if (nickname.present) {
+      map['nickname'] = Variable<String>(nickname.value);
     }
     if (ringId.present) {
       map['ring_id'] = Variable<int>(ringId.value);
@@ -774,6 +824,7 @@ class MembersCompanion extends UpdateCompanion<MemberRow> {
           ..write('id: $id, ')
           ..write('contactKey: $contactKey, ')
           ..write('cachedName: $cachedName, ')
+          ..write('nickname: $nickname, ')
           ..write('ringId: $ringId, ')
           ..write('baselineDate: $baselineDate, ')
           ..write('lastContacted: $lastContacted, ')
@@ -1340,6 +1391,7 @@ typedef $$MembersTableCreateCompanionBuilder = MembersCompanion Function({
   Value<int> id,
   required String contactKey,
   required String cachedName,
+  Value<String?> nickname,
   required int ringId,
   required CalendarDate baselineDate,
   Value<CalendarDate?> lastContacted,
@@ -1350,6 +1402,7 @@ typedef $$MembersTableUpdateCompanionBuilder = MembersCompanion Function({
   Value<int> id,
   Value<String> contactKey,
   Value<String> cachedName,
+  Value<String?> nickname,
   Value<int> ringId,
   Value<CalendarDate> baselineDate,
   Value<CalendarDate?> lastContacted,
@@ -1418,6 +1471,11 @@ class $$MembersTableFilterComposer
 
   ColumnFilters<String> get cachedName => $composableBuilder(
     column: $table.cachedName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nickname => $composableBuilder(
+    column: $table.nickname,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1518,6 +1576,11 @@ class $$MembersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get nickname => $composableBuilder(
+    column: $table.nickname,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get baselineDate => $composableBuilder(
     column: $table.baselineDate,
     builder: (column) => ColumnOrderings(column),
@@ -1583,6 +1646,9 @@ class $$MembersTableAnnotationComposer
     column: $table.cachedName,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get nickname =>
+      $composableBuilder(column: $table.nickname, builder: (column) => column);
 
   GeneratedColumnWithTypeConverter<CalendarDate, int> get baselineDate =>
       $composableBuilder(
@@ -1688,6 +1754,7 @@ class $$MembersTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> contactKey = const Value.absent(),
                 Value<String> cachedName = const Value.absent(),
+                Value<String?> nickname = const Value.absent(),
                 Value<int> ringId = const Value.absent(),
                 Value<CalendarDate> baselineDate = const Value.absent(),
                 Value<CalendarDate?> lastContacted = const Value.absent(),
@@ -1697,6 +1764,7 @@ class $$MembersTableTableManager
                 id: id,
                 contactKey: contactKey,
                 cachedName: cachedName,
+                nickname: nickname,
                 ringId: ringId,
                 baselineDate: baselineDate,
                 lastContacted: lastContacted,
@@ -1708,6 +1776,7 @@ class $$MembersTableTableManager
                 Value<int> id = const Value.absent(),
                 required String contactKey,
                 required String cachedName,
+                Value<String?> nickname = const Value.absent(),
                 required int ringId,
                 required CalendarDate baselineDate,
                 Value<CalendarDate?> lastContacted = const Value.absent(),
@@ -1717,6 +1786,7 @@ class $$MembersTableTableManager
                 id: id,
                 contactKey: contactKey,
                 cachedName: cachedName,
+                nickname: nickname,
                 ringId: ringId,
                 baselineDate: baselineDate,
                 lastContacted: lastContacted,
