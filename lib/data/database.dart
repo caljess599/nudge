@@ -8,6 +8,8 @@ import '../core/daily_nudges.dart';
 import '../core/due_dates.dart';
 import '../core/models.dart';
 
+import 'database.steps.dart';
+
 part 'database.g.dart';
 
 /// Stores [CalendarDate] as an integer number of days since 1970-01-01.
@@ -38,6 +40,9 @@ class Members extends Table {
   /// UNIQUE: enforces one ring per contact at the database level.
   TextColumn get contactKey => text().unique()();
   TextColumn get cachedName => text()();
+
+  /// Name used only inside Nudge. Added in schema version 2.
+  TextColumn get nickname => text().nullable()();
 
   /// RESTRICT: a ring with members can't be deleted until they're moved.
   IntColumn get ringId =>
@@ -92,10 +97,15 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: stepByStep(
+      from1To2: (m, schema) async {
+        await m.addColumn(schema.members, schema.members.nickname);
+      },
+    ),
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
     },
@@ -184,12 +194,19 @@ class AppDatabase extends _$AppDatabase {
         MembersCompanion(
           contactKey: Value(member.contactKey),
           cachedName: Value(member.cachedName),
+          nickname: Value(member.nickname),
           ringId: Value(member.ringId),
           baselineDate: Value(member.baselineDate),
           lastContacted: Value(member.lastContacted),
           snoozedUntil: Value(member.snoozedUntil),
           lastSurfaced: Value(member.lastSurfaced),
         ),
+      );
+
+  /// Sets or clears (null or blank) the Nudge-only name.
+  Future<void> setNickname(int memberId, String? nickname) =>
+      (update(members)..where((m) => m.id.equals(memberId))).write(
+        MembersCompanion(nickname: Value(normalizeNickname(nickname))),
       );
 
   Future<void> moveMember(Member member, Ring ring) =>
@@ -294,7 +311,9 @@ class AppDatabase extends _$AppDatabase {
           ..where(dailyNudges.date.isBiggerOrEqualValue(from.epochDay))
           ..orderBy([
             OrderingTerm.desc(dailyNudges.date),
-            OrderingTerm(expression: members.cachedName),
+            OrderingTerm(
+              expression: coalesce([members.nickname, members.cachedName]),
+            ),
           ]);
     return query.watch().map(
       (rows) => [
@@ -338,6 +357,7 @@ class AppDatabase extends _$AppDatabase {
     id: r.id,
     contactKey: r.contactKey,
     cachedName: r.cachedName,
+    nickname: r.nickname,
     ringId: r.ringId,
     baselineDate: r.baselineDate,
     lastContacted: r.lastContacted,

@@ -62,7 +62,7 @@ class _TodayScreenState extends State<TodayScreen> with WidgetsBindingObserver {
     final yes = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Did you reach out to ${entry.member.cachedName}?'),
+        title: Text('Did you reach out to ${entry.member.displayName}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -233,7 +233,7 @@ class NudgeCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    member.cachedName,
+                    member.displayName,
                     style: theme.textTheme.titleMedium,
                   ),
                 ),

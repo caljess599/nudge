@@ -41,8 +41,13 @@ class Member {
   /// Stable contact lookup key (Android lookup key / iOS identifier).
   final String contactKey;
 
-  /// Fallback display name if the contact can't be found.
+  /// The contact's name from the address book, refreshed when the contact
+  /// changes. Fallback if the contact can't be found.
   final String cachedName;
+
+  /// Optional name used only inside Nudge, e.g. "Mom". Never overwritten
+  /// by contact syncing or relinking. Null means "use [cachedName]".
+  final String? nickname;
 
   final int ringId;
 
@@ -60,10 +65,14 @@ class Member {
     required this.cachedName,
     required this.ringId,
     required this.baselineDate,
+    this.nickname,
     this.lastContacted,
     this.snoozedUntil,
     this.lastSurfaced,
   });
+
+  /// What Nudge shows: the nickname if set, otherwise the contact name.
+  String get displayName => nickname ?? cachedName;
 
   /// Nullable fields take a function so they can be explicitly cleared,
   /// e.g. `copyWith(snoozedUntil: () => null)`.
@@ -73,6 +82,7 @@ class Member {
     String? cachedName,
     int? ringId,
     CalendarDate? baselineDate,
+    String? Function()? nickname,
     CalendarDate? Function()? lastContacted,
     CalendarDate? Function()? snoozedUntil,
     CalendarDate? Function()? lastSurfaced,
@@ -82,6 +92,7 @@ class Member {
     cachedName: cachedName ?? this.cachedName,
     ringId: ringId ?? this.ringId,
     baselineDate: baselineDate ?? this.baselineDate,
+    nickname: nickname != null ? normalizeNickname(nickname()) : this.nickname,
     lastContacted: lastContacted != null ? lastContacted() : this.lastContacted,
     snoozedUntil: snoozedUntil != null ? snoozedUntil() : this.snoozedUntil,
     lastSurfaced: lastSurfaced != null ? lastSurfaced() : this.lastSurfaced,
@@ -95,6 +106,7 @@ class Member {
       other.cachedName == cachedName &&
       other.ringId == ringId &&
       other.baselineDate == baselineDate &&
+      other.nickname == nickname &&
       other.lastContacted == lastContacted &&
       other.snoozedUntil == snoozedUntil &&
       other.lastSurfaced == lastSurfaced;
@@ -106,6 +118,7 @@ class Member {
     cachedName,
     ringId,
     baselineDate,
+    nickname,
     lastContacted,
     snoozedUntil,
     lastSurfaced,
@@ -113,6 +126,12 @@ class Member {
 
   @override
   String toString() => 'Member($id, $contactKey, ring $ringId)';
+}
+
+/// Trims a nickname; blank means no nickname.
+String? normalizeNickname(String? nickname) {
+  final trimmed = nickname?.trim();
+  return (trimmed == null || trimmed.isEmpty) ? null : trimmed;
 }
 
 enum NudgeStatus { pending, done, snoozed, skipped }

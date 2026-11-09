@@ -90,7 +90,7 @@ class _ContactPickerScreenState extends State<ContactPickerScreen> {
 
   Future<void> _moveHere(Member member, String fromRing) async {
     await _scope.db.moveMember(member, widget.ring);
-    _snack('Moved ${member.cachedName} from $fromRing');
+    _snack('Moved ${member.displayName} from $fromRing');
   }
 
   Future<void> _relinkTo(PhoneContact contact) async {
@@ -111,7 +111,7 @@ class _ContactPickerScreenState extends State<ContactPickerScreen> {
   @override
   Widget build(BuildContext context) {
     final title = _relinkMode
-        ? 'Relink ${widget.relinking!.cachedName}'
+        ? 'Relink ${widget.relinking!.displayName}'
         : 'Add to ${widget.ring.name}';
     return Scaffold(
       appBar: AppBar(title: Text(title)),
@@ -232,7 +232,12 @@ class _ContactPickerScreenState extends State<ContactPickerScreen> {
         value: inThisRing,
         onChanged: null,
         title: Text(contact.displayName),
-        subtitle: Text(inThisRing ? 'Already in this ring' : 'In $ringName'),
+        subtitle: Text(
+          [
+            inThisRing ? 'Already in this ring' : 'In $ringName',
+            if (member.nickname case final nickname?) 'as $nickname',
+          ].join(' '),
+        ),
         secondary: inThisRing || _relinkMode
             ? null
             : TextButton(

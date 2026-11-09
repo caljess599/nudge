@@ -12,6 +12,7 @@ import '../contacts/contact_directory.dart';
 import '../debug/seed.dart';
 import 'contact_picker_screen.dart';
 import 'formatting.dart';
+import 'nickname_dialog.dart';
 import 'reach_out.dart';
 import 'ring_form_dialog.dart';
 
@@ -268,7 +269,11 @@ class _MemberList extends StatelessWidget {
     final sorted = [...members]
       ..sort((a, b) {
         final byDue = nextDue(a, ring).compareTo(nextDue(b, ring));
-        return byDue != 0 ? byDue : a.cachedName.compareTo(b.cachedName);
+        return byDue != 0
+            ? byDue
+            : a.displayName.toLowerCase().compareTo(
+                b.displayName.toLowerCase(),
+              );
       });
     return ListView(
       padding: const EdgeInsets.only(bottom: 88),
@@ -283,7 +288,7 @@ class _MemberList extends StatelessWidget {
         ),
         for (final m in sorted)
           ListTile(
-            title: Text(m.cachedName),
+            title: Text(m.displayName),
             subtitle: Text(
               '${dueLabel(context, m, ring, today)} · '
               '${lastContactLabel(context, m)}',
@@ -319,13 +324,18 @@ Future<void> _showMemberSheet(
         children: [
           ListTile(
             title: Text(
-              member.cachedName,
+              member.displayName,
               style: Theme.of(sheetContext).textTheme.titleLarge,
             ),
             subtitle: Text(
-              '${dueLabel(sheetContext, member, ring, today)} · '
-              '${lastContactLabel(sheetContext, member)}',
+              [
+                // With a nickname, show who it is in your contacts too.
+                if (member.nickname != null) member.cachedName,
+                '${dueLabel(sheetContext, member, ring, today)} · '
+                    '${lastContactLabel(sheetContext, member)}',
+              ].join('\n'),
             ),
+            isThreeLine: member.nickname != null,
             trailing: contact == null
                 ? null
                 : ReachOutButtons(contact: contact),
@@ -361,6 +371,16 @@ Future<void> _showMemberSheet(
             },
           ),
           ListTile(
+            leading: const Icon(Icons.badge_outlined),
+            title: const Text('Nickname'),
+            subtitle: Text(member.nickname ?? 'Not set'),
+            onTap: () async {
+              Navigator.pop(sheetContext);
+              final nickname = await showNicknameDialog(context, member);
+              if (nickname != null) await db.setNickname(member.id, nickname);
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.drive_file_move_outline),
             title: const Text('Move to another ring'),
             onTap: () async {
@@ -377,7 +397,7 @@ Future<void> _showMemberSheet(
               Navigator.pop(sheetContext);
               final ok = await _confirm(
                 context,
-                title: 'Remove ${member.cachedName}?',
+                title: 'Remove ${member.displayName}?',
                 body:
                     'They\'ll be removed from "${ring.name}" and their '
                     'nudge history in Nudge is deleted. Your phone\'s '

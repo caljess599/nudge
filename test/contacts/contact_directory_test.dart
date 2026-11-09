@@ -113,6 +113,34 @@ void main() {
     await expectLater(directory.relink(m, ben), throwsA(isA<Exception>()));
   });
 
+  test('nicknames survive contact renames, key changes and relinks', () async {
+    final m = await add('k-ana-old', 'Ana');
+    await db.setNickname(m.id, ' Mom ');
+    expect((await db.memberById(m.id))!.nickname, 'Mom');
+
+    // Contact renamed and its lookup key changed.
+    source.contacts[0] = const PhoneContact(
+      key: 'k-ana',
+      id: '1',
+      displayName: 'Ana Silva-Jones',
+    );
+    source.lookupAliases['k-ana-old'] = 'k-ana';
+    await directory.refresh();
+    var updated = (await db.memberById(m.id))!;
+    expect(updated.contactKey, 'k-ana');
+    expect(updated.cachedName, 'Ana Silva-Jones');
+    expect(updated.nickname, 'Mom');
+    expect(updated.displayName, 'Mom');
+
+    await directory.relink(updated, ben);
+    updated = (await db.memberById(m.id))!;
+    expect(updated.cachedName, 'Ben');
+    expect(updated.nickname, 'Mom');
+
+    await db.setNickname(m.id, '  ');
+    expect((await db.memberById(m.id))!.displayName, 'Ben');
+  });
+
   test('dialableNumber keeps + and digits', () {
     expect(dialableNumber('+1 (202) 555-0101'), '+12025550101');
     expect(dialableNumber(' 202.555.0101 '), '2025550101');
