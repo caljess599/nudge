@@ -16,8 +16,14 @@ Store it **outside** the repository, e.g. in your home folder:
 keytool -genkey -v -keystore ~/nudge-upload.jks -keyalg RSA -keysize 2048 -validity 10000 -alias nudge
 ```
 
-`keytool` comes with Java; Android Studio bundles one under
-`Android Studio.app/Contents/jbr/Contents/Home/bin/` on a Mac.
+`keytool` comes with Java. You don't need to install Java separately:
+Android Studio bundles one, which is what Flutter uses for Android builds.
+`flutter doctor -v` shows its path ("Java binary at: …"); `keytool` is in
+the same folder, e.g. on a Mac:
+
+```bash
+"/Applications/Android Studio.app/Contents/jbr/Contents/Home/bin/keytool" -genkey -v -keystore ~/nudge-upload.jks -keyalg RSA -keysize 2048 -validity 10000 -alias nudge
+```
 
 ## 2. Point the build at it
 
@@ -33,21 +39,37 @@ keyPassword=the key password
 Use the absolute path to the keystore. If this file is missing, release
 builds fall back to the debug key and Gradle prints a warning.
 
-## 3. Build and install
+## 3. Build
 
 ```bash
 flutter build apk --release
 ```
 
+The APK is at `build/app/outputs/flutter-apk/app-release.apk`.
+
+## 4. Install
+
+**First release install** (replacing a debug install): the signing key
+changes, so Android won't update in place. Export a backup in the app
+first, then:
+
 ```bash
-flutter install --release
+flutter install
 ```
 
-Or install the APK from `build/app/outputs/flutter-apk/app-release.apk`.
+`flutter install` **uninstalls the existing app first, deleting its
+data**. Afterwards, import your backup.
 
-> Switching between a debug install and a release install means the
-> signing key changes, so Android will refuse to update: uninstall first,
-> after exporting a backup.
+**Updating an existing release install:** use `adb install -r`, which
+replaces the app and keeps its data (only works when both builds are
+signed with the same key):
+
+```bash
+adb install -r build/app/outputs/flutter-apk/app-release.apk
+```
+
+If `adb` isn't on your PATH, it's in the Android SDK's `platform-tools`
+folder (on a Mac: `~/Library/Android/sdk/platform-tools/adb`).
 
 ## Before every commit
 
