@@ -71,6 +71,22 @@ class NewMember {
   const NewMember({required this.contactKey, required this.cachedName});
 }
 
+class RingSummary {
+  final Ring ring;
+  final int memberCount;
+
+  const RingSummary(this.ring, this.memberCount);
+}
+
+/// A saved nudge with the member and ring it refers to.
+class NudgeEntry {
+  final DailyNudge nudge;
+  final Member member;
+  final Ring ring;
+
+  const NudgeEntry(this.nudge, this.member, this.ring);
+}
+
 @DriftDatabase(tables: [Rings, Members, DailyNudges])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
@@ -227,6 +243,87 @@ class AppDatabase extends _$AppDatabase {
     if (nudge != null) {
       await into(dailyNudges).insertOnConflictUpdate(_nudgeCompanion(nudge));
     }
+  });
+
+  // ---------- Live queries for the UI ----------
+
+  /// Rings ordered by period then name, each with its member count.
+  Stream<List<RingSummary>> watchRingSummaries() =>
+      _ringSummaryQuery().watch().map(_toSummaries);
+
+  Future<List<RingSummary>> ringSummaries() async =>
+      _toSummaries(await _ringSummaryQuery().get());
+
+  late final _memberCount = members.id.count();
+
+  JoinedSelectStatement<HasResultSet, dynamic> _ringSummaryQuery() =>
+      select(rings)
+          .join([leftOuterJoin(members, members.ringId.equalsExp(rings.id))])
+        ..addColumns([_memberCount])
+        ..groupBy([rings.id])
+        ..orderBy([
+          OrderingTerm(expression: rings.periodDays),
+          OrderingTerm(expression: rings.name),
+        ]);
+
+  List<RingSummary> _toSummaries(List<TypedResult> rows) => [
+    for (final row in rows)
+      RingSummary(_ring(row.readTable(rings)), row.read(_memberCount) ?? 0),
+  ];
+
+  Stream<Ring?> watchRing(int ringId) =>
+      (select(rings)..where((r) => r.id.equals(ringId)))
+          .watchSingleOrNull()
+          .map((r) => r == null ? null : _ring(r));
+
+  Stream<List<Member>> watchMembersOfRing(int ringId) =>
+      (select(members)..where((m) => m.ringId.equals(ringId))).watch().map(
+        (rows) => rows.map(_member).toList(),
+      );
+
+  /// Nudges on or after [from], newest first, with their member and ring.
+  Stream<List<NudgeEntry>> watchNudgeEntries(CalendarDate from) {
+    final query =
+        select(dailyNudges).join([
+            innerJoin(members, members.id.equalsExp(dailyNudges.memberId)),
+            innerJoin(rings, rings.id.equalsExp(members.ringId)),
+          ])
+          ..where(dailyNudges.date.isBiggerOrEqualValue(from.epochDay))
+          ..orderBy([
+            OrderingTerm.desc(dailyNudges.date),
+            OrderingTerm(expression: members.cachedName),
+          ]);
+    return query.watch().map(
+      (rows) => [
+        for (final row in rows)
+          NudgeEntry(
+            _nudge(row.readTable(dailyNudges)),
+            _member(row.readTable(members)),
+            _ring(row.readTable(rings)),
+          ),
+      ],
+    );
+  }
+
+  /// Moves every member of [ringId] to [toRingId], then deletes the ring,
+  /// in one transaction.
+  Future<void> deleteRingMovingMembers(int ringId, {required int toRingId}) {
+    if (ringId == toRingId) {
+      throw ArgumentError.value(toRingId, 'toRingId', 'is the ring to delete');
+    }
+    return transaction(() async {
+      await (update(members)..where((m) => m.ringId.equals(ringId))).write(
+        MembersCompanion(ringId: Value(toRingId)),
+      );
+      await deleteRing(ringId);
+    });
+  }
+
+  /// Deletes everything. Used by the debug-only reset.
+  Future<void> deleteAllData() => transaction(() async {
+    await delete(dailyNudges).go();
+    await delete(members).go();
+    await delete(rings).go();
   });
 
   // ---------- Mapping ----------
