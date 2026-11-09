@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../core/contact_matching.dart';
 import '../core/models.dart';
 import '../data/database.dart';
 import 'contacts_source.dart';
@@ -109,7 +110,10 @@ class ContactDirectory extends ChangeNotifier {
   Future<Set<String>> _reconcile(ContactsAccess access) async {
     final missing = <String>{};
     final byKey = {..._byKey};
+    // Members as stored after this pass, for the name fallback below.
+    final current = <Member>[];
     for (final member in await db.allMembers()) {
+      current.add(member);
       var contact = byKey[member.contactKey];
       if (contact == null) {
         // With limited access, an unseen contact may just not be shared.
@@ -124,12 +128,12 @@ class ContactDirectory extends ChangeNotifier {
       if (contact.key != member.contactKey ||
           contact.displayName != member.cachedName) {
         try {
-          await db.saveMember(
-            member.copyWith(
-              contactKey: contact.key,
-              cachedName: contact.displayName,
-            ),
+          final updated = member.copyWith(
+            contactKey: contact.key,
+            cachedName: contact.displayName,
           );
+          await db.saveMember(updated);
+          current[current.length - 1] = updated;
         } on Exception {
           // The new key already belongs to another member (two members
           // merged into one contact). Keep this one visible for relinking.
@@ -137,7 +141,44 @@ class ContactDirectory extends ChangeNotifier {
         }
       }
     }
+    if (missing.isNotEmpty) {
+      await _matchMissingByName(current, byKey, missing);
+    }
     _byKey = byKey;
     return missing;
+  }
+
+  /// Last resort for members whose contact wasn't found by key: a unique
+  /// exact name match (same rule as import). This is what makes a database
+  /// restored by Android Auto Backup on a new phone, where every key is
+  /// different, link up again. Ambiguous names stay "Needs relinking".
+  Future<void> _matchMissingByName(
+    List<Member> members,
+    Map<String, PhoneContact> byKey,
+    Set<String> missing,
+  ) async {
+    final matched = matchMembersToContacts(members, [
+      for (final c in byKey.values) (key: c.key, name: c.displayName),
+    ]);
+    for (var i = 0; i < members.length; i++) {
+      final before = members[i];
+      final contact = byKey[matched[i].contactKey];
+      if (contact == null ||
+          matched[i].contactKey == before.contactKey ||
+          !missing.contains(before.contactKey)) {
+        continue;
+      }
+      try {
+        await db.saveMember(
+          before.copyWith(
+            contactKey: contact.key,
+            cachedName: contact.displayName,
+          ),
+        );
+        missing.remove(before.contactKey);
+      } on Exception {
+        // Taken in the meantime: leave it for manual relinking.
+      }
+    }
   }
 }

@@ -2,7 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../app.dart';
+import '../core/export_format.dart';
 import '../core/reminder.dart';
+import 'formatting.dart';
 
 String formatReminderTime(BuildContext context, ReminderTime time) =>
     TimeOfDay(hour: time.hour, minute: time.minute).format(context);
@@ -100,6 +102,8 @@ class SettingsScreen extends StatelessWidget {
                   style: theme.textTheme.bodySmall,
                 ),
               ),
+              const Divider(),
+              const _YourDataSection(),
               if (kDebugMode) ...[
                 const Divider(),
                 ListTile(
@@ -170,6 +174,135 @@ class ReminderOfferCard extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// Export and import (SPEC.md: never lose data).
+class _YourDataSection extends StatelessWidget {
+  const _YourDataSection();
+
+  Future<void> _export(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final saved = await AppScope.of(context).backup
+          .export(now: DateTime.now());
+      if (saved) {
+        messenger.showSnackBar(const SnackBar(content: Text('Backup saved')));
+      }
+    } on Exception catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Couldn\'t save: $e')));
+    }
+  }
+
+  Future<void> _import(BuildContext context) async {
+    final scope = AppScope.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final ExportData? data;
+    try {
+      data = await scope.backup.pickBackup();
+    } on FormatException catch (e) {
+      if (context.mounted) await _explain(context, e.message);
+      return;
+    }
+    if (data == null || !context.mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Replace everything in Nudge?'),
+        content: Text(_describe(context, data!)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Replace'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      final linked = await scope.backup.restore(data);
+      await scope.reminders.sync();
+      await scope.db.ensureDailyNudges(scope.clock.today());
+      final total = data.members.length;
+      final unlinked = total - linked;
+      final access = scope.contacts.access;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Restored ${peopleCount(total)}.'
+            '${access != null && access.canRead && unlinked > 0 ? ' $unlinked need relinking.' : ''}',
+          ),
+        ),
+      );
+    } on Exception catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Import failed, nothing was changed. ($e)')),
+      );
+    }
+  }
+
+  static String _describe(BuildContext context, ExportData data) {
+    final when = data.exportedAt;
+    final from = when == null
+        ? ''
+        : ' from '
+              '${MaterialLocalizations.of(context).formatMediumDate(when.toLocal())}';
+    final rings = data.rings.length == 1
+        ? '1 ring'
+        : '${data.rings.length} rings';
+    return 'This backup$from has $rings and '
+        '${peopleCount(data.members.length)}. Your current rings, people '
+        'and history will be replaced. Your phone\'s contacts are not '
+        'changed.';
+  }
+
+  Future<void> _explain(BuildContext context, String message) =>
+      showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Can\'t import this file'),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Text(
+            'Your data',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+        ),
+        ListTile(
+          leading: const Icon(Icons.upload_file_outlined),
+          title: const Text('Export backup'),
+          subtitle: const Text('Save rings, people and history to a file'),
+          onTap: () => _export(context),
+        ),
+        ListTile(
+          leading: const Icon(Icons.download_outlined),
+          title: const Text('Import backup'),
+          subtitle: const Text('Replace everything with a backup file'),
+          onTap: () => _import(context),
+        ),
+      ],
     );
   }
 }

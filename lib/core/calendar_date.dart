@@ -17,6 +17,23 @@ class CalendarDate implements Comparable<CalendarDate> {
     );
   }
 
+  /// Parses an ISO 8601 date (`2026-11-09`). Throws [FormatException].
+  factory CalendarDate.parse(String text) {
+    final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(text);
+    if (match == null) throw FormatException('Not a date: $text');
+    final (y, m, d) = (
+      int.parse(match[1]!),
+      int.parse(match[2]!),
+      int.parse(match[3]!),
+    );
+    final date = CalendarDate(y, m, d);
+    // Reject impossible dates like 2026-02-30 instead of rolling over.
+    if (date.month != m || date.day != d) {
+      throw FormatException('Not a valid date: $text');
+    }
+    return date;
+  }
+
   /// The calendar date of [dateTime] in its own time zone.
   factory CalendarDate.fromDateTime(DateTime dateTime) =>
       CalendarDate(dateTime.year, dateTime.month, dateTime.day);

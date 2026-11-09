@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android Auto Backup on Android 11 and older: only Nudge's database.
+     It lives in getDir("flutter"), i.e. app_flutter/ in the app's data
+     directory (path_provider's documents directory on Android). -->
+<full-backup-content>
+    <include domain="root" path="app_flutter/nudge.sqlite" />
+</full-backup-content>
