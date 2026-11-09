@@ -88,18 +88,7 @@ class LocalReminderScheduler implements ReminderScheduler {
       title: reminderTitle,
       body: reminderBody,
       scheduledDate: when,
-      notificationDetails: const NotificationDetails(
-        android: AndroidNotificationDetails(
-          _channelId,
-          'Daily nudge',
-          channelDescription: 'One reminder a day to check your nudges',
-          importance: Importance.defaultImportance,
-          priority: Priority.defaultPriority,
-          // The text is generic, so it's fine on the lock screen.
-          visibility: NotificationVisibility.public,
-        ),
-        iOS: DarwinNotificationDetails(),
-      ),
+      notificationDetails: _details,
       // "Around" the chosen time: Android may delay it slightly to save
       // battery. No exact-alarm permission needed.
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
@@ -109,6 +98,27 @@ class LocalReminderScheduler implements ReminderScheduler {
 
   @override
   Future<void> cancel() => _plugin.cancel(id: _id);
+
+  @override
+  Future<void> showNow() => _plugin.show(
+    id: _id + 1,
+    title: reminderTitle,
+    body: reminderBody,
+    notificationDetails: _details,
+  );
+
+  static const _details = NotificationDetails(
+    android: AndroidNotificationDetails(
+      _channelId,
+      'Daily nudge',
+      channelDescription: 'One reminder a day to check your nudges',
+      importance: Importance.defaultImportance,
+      priority: Priority.defaultPriority,
+      // The text is generic, so it's fine on the lock screen.
+      visibility: NotificationVisibility.public,
+    ),
+    iOS: DarwinNotificationDetails(),
+  );
 
   AndroidFlutterLocalNotificationsPlugin? get _android => _plugin
       .resolvePlatformSpecificImplementation<

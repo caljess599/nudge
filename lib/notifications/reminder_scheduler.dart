@@ -20,4 +20,7 @@ abstract interface class ReminderScheduler {
   Future<void> scheduleDaily(ReminderTime time);
 
   Future<void> cancel();
+
+  /// Debug builds: shows the reminder immediately, to check how it looks.
+  Future<void> showNow();
 }

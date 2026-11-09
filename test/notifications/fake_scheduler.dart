@@ -43,4 +43,9 @@ class FakeReminderScheduler implements ReminderScheduler {
 
   @override
   Future<void> cancel() async => scheduled = null;
+
+  int shownNow = 0;
+
+  @override
+  Future<void> showNow() async => shownNow++;
 }

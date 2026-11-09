@@ -9,6 +9,7 @@ import '../core/models.dart';
 import '../data/database.dart';
 import 'formatting.dart';
 import 'reach_out.dart';
+import 'settings_screen.dart';
 
 /// How many days of past nudges to show so people can check them off late.
 const recentDays = 7;
@@ -22,6 +23,9 @@ class TodayScreen extends StatefulWidget {
 
 class _TodayScreenState extends State<TodayScreen> with WidgetsBindingObserver {
   CalendarDate? _today;
+  late final Stream<int> _memberCount = AppScope.of(context).db
+      .watchAllMembers()
+      .map((m) => m.length);
 
   /// Set when Call/Text/contact card opened another app for this nudge,
   /// so we can ask "Did you reach out?" when the user comes back.
@@ -114,7 +118,18 @@ class _TodayScreenState extends State<TodayScreen> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final today = _today!;
     return Scaffold(
-      appBar: AppBar(title: const Text('Today')),
+      appBar: AppBar(
+        title: const Text('Today'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Settings',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
+            ),
+          ),
+        ],
+      ),
       body: StreamBuilder<List<NudgeEntry>>(
         stream: _entries,
         builder: (context, snapshot) {
@@ -130,6 +145,11 @@ class _TodayScreenState extends State<TodayScreen> with WidgetsBindingObserver {
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
             children: [
+              StreamBuilder<int>(
+                stream: _memberCount,
+                builder: (context, snap) =>
+                    ReminderOfferCard(memberCount: snap.data ?? 0),
+              ),
               if (todays.isEmpty)
                 const _AllCaughtUp()
               else

@@ -12,6 +12,7 @@ import 'package:nudge/core/clock.dart';
 import 'package:nudge/core/models.dart';
 import 'package:nudge/data/database.dart';
 
+import '../notifications/fake_scheduler.dart';
 import 'test_launcher.dart';
 
 void main() {
@@ -37,6 +38,7 @@ void main() {
         clock: FixedClock(today),
         contactsSource: FakeContactsSource(contacts: [jane]),
         launcher: RecordingLauncher(),
+        reminderScheduler: FakeReminderScheduler(),
       ),
     );
     await tester.pumpAndSettle();

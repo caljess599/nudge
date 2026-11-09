@@ -10,7 +10,9 @@ import 'package:nudge/core/calendar_date.dart';
 import 'package:nudge/core/clock.dart';
 import 'package:nudge/core/models.dart';
 import 'package:nudge/data/database.dart';
+import 'package:nudge/ui/today_screen.dart';
 
+import '../notifications/fake_scheduler.dart';
 import 'test_launcher.dart';
 
 void main() {
@@ -35,6 +37,7 @@ void main() {
         clock: FixedClock(today),
         contactsSource: FakeContactsSource(contacts: const []),
         launcher: RecordingLauncher(),
+        reminderScheduler: FakeReminderScheduler(),
       ),
     );
     await tester.pumpAndSettle();
@@ -123,7 +126,10 @@ void main() {
     await addPeople(ring, ['Later'], overdue: false);
 
     await pumpApp(tester);
-    final cards = find.byType(Card);
+    // Answer the reminder offer so all three cards fit on screen.
+    await tester.tap(find.text('Not now'));
+    await tester.pumpAndSettle();
+    final cards = find.byType(NudgeCard);
     expect(cards, findsNWidgets(3));
     expect(find.text('Later'), findsNothing);
 

@@ -13,6 +13,7 @@ import 'package:nudge/core/models.dart';
 import 'package:nudge/core/reach_methods.dart';
 import 'package:nudge/data/database.dart';
 
+import '../notifications/fake_scheduler.dart';
 import 'test_launcher.dart';
 
 void main() {
@@ -55,6 +56,7 @@ void main() {
         clock: FixedClock(today),
         contactsSource: FakeContactsSource(contacts: [jane, local]),
         launcher: launcher,
+        reminderScheduler: FakeReminderScheduler(),
       ),
     );
     await tester.pumpAndSettle();
