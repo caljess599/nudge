@@ -7,7 +7,8 @@ import '../core/reach_methods.dart';
 import 'reach_out.dart';
 
 /// Choose how to reach [member]: no preference, a phone-based method with
-/// a specific number (or their mobile by default), or a custom link.
+/// a specific number (or their mobile by default), a Signal username link
+/// or Telegram username, or a custom link.
 class ReachPreferenceScreen extends StatefulWidget {
   final Member member;
   final PhoneContact? contact;
@@ -25,10 +26,25 @@ class ReachPreferenceScreen extends StatefulWidget {
 class _ReachPreferenceScreenState extends State<ReachPreferenceScreen> {
   late ReachMethod? _method = widget.member.reachVia;
 
+  /// Signal/Telegram: reach them by username instead of phone number,
+  /// e.g. when they hide their number.
+  late bool _byUsername = _savedUsername != null;
+
   /// Chosen number; null means "mobile (or first) number".
-  late String? _number = widget.member.reachVia?.usesPhoneNumber == true
+  late String? _number =
+      widget.member.reachVia?.usesPhoneNumber == true && _savedUsername == null
       ? widget.member.reachValue
       : null;
+
+  late final _username = TextEditingController(text: _savedUsername ?? '');
+  String? _usernameError;
+
+  String? get _savedUsername {
+    final method = widget.member.reachVia;
+    final value = widget.member.reachValue;
+    if (method == null || value == null) return null;
+    return isUsernameValue(method, value) ? value : null;
+  }
 
   late final _link = TextEditingController(
     text: widget.member.reachVia == ReachMethod.link
@@ -42,6 +58,7 @@ class _ReachPreferenceScreenState extends State<ReachPreferenceScreen> {
   @override
   void dispose() {
     _link.dispose();
+    _username.dispose();
     super.dispose();
   }
 
@@ -55,6 +72,21 @@ class _ReachPreferenceScreenState extends State<ReachPreferenceScreen> {
         return;
       }
       value = uri.toString();
+    } else if (method != null && method.supportsUsername && _byUsername) {
+      value = switch (method) {
+        ReachMethod.signal => parseSignalUsernameLink(
+          _username.text,
+        )?.toString(),
+        _ => parseTelegramUsername(_username.text),
+      };
+      if (value == null) {
+        setState(
+          () => _usernameError = method == ReachMethod.signal
+              ? 'Paste the link they shared, starting with https://signal.me/'
+              : 'Enter a username like @name',
+        );
+        return;
+      }
     } else if (method != null) {
       value = _number;
     }
@@ -77,6 +109,7 @@ class _ReachPreferenceScreenState extends State<ReachPreferenceScreen> {
         onChanged: (m) => setState(() {
           _method = m;
           _linkError = null;
+          _usernameError = null;
         }),
         child: ListView(
           children: [
@@ -92,15 +125,21 @@ class _ReachPreferenceScreenState extends State<ReachPreferenceScreen> {
                 secondary: Icon(reachIcon(m)),
               ),
             const Divider(),
-            if (method != null && method.usesPhoneNumber) ..._numberChoice(),
+            if (method != null && method.supportsUsername)
+              _numberOrUsername(method),
+            if (method != null && method.supportsUsername && _byUsername)
+              _usernameField(method)
+            else if (method != null && method.usesPhoneNumber)
+              ..._numberChoice(),
             if (method == ReachMethod.link) _linkField(),
             if (method != null && method.isMessagingApp)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                 child: Text(
                   '${method.label} opens only if it\'s installed. Nudge '
-                  'never opens it in a browser, so the number isn\'t sent '
-                  'to any website.',
+                  'never opens it in a browser, so the '
+                  '${_byUsername && method.supportsUsername ? 'username' : 'number'} '
+                  'isn\'t sent to any website.',
                   style: theme.textTheme.bodySmall,
                 ),
               ),
@@ -165,6 +204,56 @@ class _ReachPreferenceScreenState extends State<ReachPreferenceScreen> {
           ),
         ),
     ];
+  }
+
+  Widget _numberOrUsername(ReachMethod method) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+    child: SegmentedButton<bool>(
+      segments: const [
+        ButtonSegment(
+          value: false,
+          icon: Icon(Icons.phone_outlined),
+          label: Text('Phone number'),
+        ),
+        ButtonSegment(
+          value: true,
+          icon: Icon(Icons.alternate_email),
+          label: Text('Username'),
+        ),
+      ],
+      selected: {_byUsername},
+      onSelectionChanged: (s) => setState(() {
+        _byUsername = s.single;
+        _usernameError = null;
+      }),
+    ),
+  );
+
+  Widget _usernameField(ReachMethod method) {
+    final signal = method == ReachMethod.signal;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: TextField(
+        controller: _username,
+        keyboardType: signal ? TextInputType.url : TextInputType.text,
+        autocorrect: false,
+        decoration: InputDecoration(
+          labelText: signal ? 'Signal username link' : 'Telegram username',
+          hintText: signal ? 'https://signal.me/#…' : '@name',
+          helperText: signal
+              ? 'For people who hide their number on Signal. Ask them to '
+                    'share their username link from their Signal profile, '
+                    'then paste it here.'
+              : 'Their @username, or a t.me/ link.',
+          helperMaxLines: 3,
+          errorText: _usernameError,
+          errorMaxLines: 2,
+        ),
+        onChanged: (_) {
+          if (_usernameError != null) setState(() => _usernameError = null);
+        },
+      ),
+    );
   }
 
   Widget _linkField() => Padding(
