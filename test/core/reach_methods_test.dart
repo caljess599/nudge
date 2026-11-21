@@ -69,4 +69,88 @@ void main() {
     expect(hasCountryCode(' +44 20 7946 0000'), isTrue);
     expect(hasCountryCode('020 7946 0000'), isFalse);
   });
+
+  group('Signal username links', () {
+    const link = 'https://signal.me/#eu/Example-Opaque_Token123';
+
+    test('opened as-is, not turned into a phone link', () {
+      expect(reachUri(ReachMethod.signal, link).toString(), link);
+      expect(reachUri(ReachMethod.signal, '  $link ').toString(), link);
+      expect(isUsernameValue(ReachMethod.signal, link), isTrue);
+    });
+
+    test('lenient about the part after #, adds a missing https', () {
+      expect(
+        parseSignalUsernameLink('signal.me/#u/anything').toString(),
+        'https://signal.me/#u/anything',
+      );
+    });
+
+    test('rejects other hosts, phone links, http and plain usernames', () {
+      for (final bad in [
+        'https://evil.example/#eu/x',
+        'https://signal.me/#p/+12025550101',
+        'https://signal.me/',
+        'http://signal.me/#eu/x',
+        'cousin.01',
+        '+1 202 555 0101',
+      ]) {
+        expect(parseSignalUsernameLink(bad), isNull, reason: bad);
+      }
+    });
+
+    test('phone numbers still build phone links', () {
+      expect(isUsernameValue(ReachMethod.signal, number), isFalse);
+      expect(
+        reachUri(ReachMethod.signal, number).toString(),
+        'https://signal.me/#p/+12025550101',
+      );
+    });
+  });
+
+  group('Telegram usernames', () {
+    test('accepts @name, name and t.me links, normalised to @name', () {
+      for (final input in [
+        '@jane_doe',
+        'jane_doe',
+        't.me/jane_doe',
+        'https://t.me/jane_doe',
+        'https://telegram.me/jane_doe/',
+      ]) {
+        expect(parseTelegramUsername(input), '@jane_doe', reason: input);
+      }
+    });
+
+    test('opens t.me/<name>', () {
+      expect(
+        reachUri(ReachMethod.telegram, '@jane_doe').toString(),
+        'https://t.me/jane_doe',
+      );
+    });
+
+    test('phone numbers are never mistaken for usernames', () {
+      for (final input in [number, '2025550101', 't.me/+12025550101']) {
+        expect(parseTelegramUsername(input), isNull, reason: input);
+        expect(isUsernameValue(ReachMethod.telegram, input), isFalse);
+      }
+      expect(
+        reachUri(ReachMethod.telegram, number).toString(),
+        'https://t.me/+12025550101',
+      );
+    });
+
+    test('rejects invalid usernames', () {
+      for (final bad in ['@ab', '_jane', 'jane doe', '@' * 3, 'a' * 40]) {
+        expect(parseTelegramUsername(bad), isNull, reason: bad);
+      }
+    });
+  });
+
+  test('only Signal and Telegram support usernames', () {
+    expect(ReachMethod.values.where((m) => m.supportsUsername), [
+      ReachMethod.signal,
+      ReachMethod.telegram,
+    ]);
+    expect(isUsernameValue(ReachMethod.whatsapp, '@jane_doe'), isFalse);
+  });
 }
