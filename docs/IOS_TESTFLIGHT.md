@@ -8,8 +8,11 @@ marked **(once)** only need doing the first time.
 - Install **Xcode** from the Mac App Store, open it once, accept the
   licence and install the iOS platform when asked
   (Xcode → Settings → Components).
-- Install **CocoaPods with Homebrew**, not with `sudo gem install` (the
-  macOS system Ruby can't build it with current Xcode):
+- Flutter uses **Swift Package Manager** for the iOS plugins when all of
+  them support it, which Nudge's currently do. It falls back to
+  **CocoaPods** for any that don't, so it's worth having installed. Use
+  Homebrew, not `sudo gem install` (the macOS system Ruby can't build it
+  with current Xcode):
 
   ```bash
   brew install cocoapods
@@ -24,41 +27,47 @@ marked **(once)** only need doing the first time.
 - Try the app in the Simulator: open Simulator (Xcode → Open Developer
   Tool → Simulator), then run `flutter run` and pick the iPhone.
 
-## 2. Commit the files CocoaPods generated (once)
+## 2. Commit what the first iOS build changed (once per Mac setup)
 
-The first iOS build creates or changes these files. They belong in the
-repository (`ios/Pods/` itself is ignored):
+The first iOS build updates the Xcode project. What changes depends on
+how Flutter set up the plugins:
 
-- `ios/Podfile` and `ios/Podfile.lock`
-- `ios/Runner.xcodeproj/project.pbxproj`
-- `ios/Runner.xcworkspace/contents.xcworkspacedata`
-- `ios/Flutter/Debug.xcconfig` and `ios/Flutter/Release.xcconfig`
+- **Swift Package Manager** (Nudge's current setup): usually only
+  `ios/Runner.xcodeproj/project.pbxproj`, sometimes also
+  `ios/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved`.
+- **CocoaPods** (if a plugin ever needs it): also `ios/Podfile`,
+  `ios/Podfile.lock`, `ios/Runner.xcworkspace/contents.xcworkspacedata`
+  and `ios/Flutter/Debug.xcconfig` / `Release.xcconfig`. `ios/Pods/`
+  itself is ignored.
+
+List everything, including new files:
 
 ```bash
-git status --short ios
+git status --short --untracked-files=all ios
 ```
 
-Check nothing unexpected is listed (no `.p8`, `.p12`,
-`.mobileprovision` or other signing files), then commit them on a branch
-along with step 3.
+Commit those files, and check nothing else is listed: no `.p8`, `.p12`,
+`.mobileprovision` or other signing files.
 
-## 3. Add the privacy manifest to the app (once)
+To commit and push without logging in to GitHub in the terminal, use
+**GitHub Desktop** (tick the files, **Commit**, then **Push origin**).
+For the terminal, sign it in once through the browser with
+`gh auth login` (from `brew install gh`); GitHub no longer accepts your
+password there.
 
-`ios/Runner/PrivacyInfo.xcprivacy` is in the repository, but Xcode only
-includes files the project lists. Without it, App Store Connect may
-reject the upload ("missing API declaration").
+## 3. Privacy manifest (done)
 
-1. Open `ios/Runner.xcworkspace` in Xcode (the workspace, not the
-   `.xcodeproj`).
-2. In the left sidebar, right-click the yellow **Runner** folder →
-   **Add Files to "Runner"…**
-3. Select `ios/Runner/PrivacyInfo.xcprivacy`. Leave "Copy items if
-   needed" **off** (it's already in place), make sure the **Runner**
-   target is ticked, click **Add**.
-4. Check: Runner target → **Build Phases** → **Copy Bundle Resources**
-   now lists `PrivacyInfo.xcprivacy`.
+`ios/Runner/PrivacyInfo.xcprivacy` is part of the Runner target in the
+repository, so there's nothing to do. Without it, App Store Connect may
+reject uploads ("missing API declaration"). To check, in Xcode: Runner
+target → **Build Phases** → **Copy Bundle Resources** lists
+`PrivacyInfo.xcprivacy`.
 
-Commit the resulting `project.pbxproj` change with step 2.
+If it's ever missing (e.g. the project file was regenerated), add it
+back: open `ios/Runner.xcworkspace`, right-click the yellow **Runner**
+folder → **Add Files to "Runner"…**, select
+`ios/Runner/PrivacyInfo.xcprivacy`, leave "Copy items if needed" **off**,
+keep the **Runner** target ticked, and click **Add**.
 
 ## 4. Apple Developer Program (once)
 
