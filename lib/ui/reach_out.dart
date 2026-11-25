@@ -197,5 +197,10 @@ String reachSummary(Member member) {
         ? '${method.label} · mobile number'
         : method.label;
   }
+  if (isUsernameValue(method, value)) {
+    return method == ReachMethod.signal
+        ? '${method.label} · username link'
+        : '${method.label} · ${parseTelegramUsername(value)}';
+  }
   return '${method.label} · $value';
 }
