@@ -45,7 +45,8 @@ flutter test
 
 - [SPEC.md](SPEC.md): product and technical specification
 - [CLAUDE.md](CLAUDE.md): conventions for AI-assisted development
-- [docs/RELEASING.md](docs/RELEASING.md): signing and installing release builds
+- [docs/RELEASING.md](docs/RELEASING.md): signing and installing Android release builds
+- [docs/IOS_TESTFLIGHT.md](docs/IOS_TESTFLIGHT.md): iPhone builds and TestFlight
 
 ## Contributing
 

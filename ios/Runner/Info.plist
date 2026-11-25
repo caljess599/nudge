@@ -6,6 +6,8 @@
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSContactsUsageDescription</key>
 	<string>Nudge reads your contacts so you can add people to your rings. Your contacts never leave your device.</string>
 	<key>LSApplicationQueriesSchemes</key>
